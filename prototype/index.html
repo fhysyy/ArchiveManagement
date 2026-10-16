@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>档案管理系统 · 设计原型 (v1.0)</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --panel:#fff; --line:#e3e8ef; --txt:#1f2937; --sub:#6b7280;
+    --primary:#2563eb; --primary-d:#1d4ed8; --ok:#16a34a; --warn:#d97706;
+    --danger:#dc2626; --soft:#eef2ff; --soft2:#f0fdf4; --ep:#409eff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:13px}
+  header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:#1e293b;color:#fff}
+  header h1{font-size:16px;margin:0;font-weight:600}
+  header .tag{background:#334155;padding:2px 8px;border-radius:10px;font-size:11px;color:#cbd5e1}
+  header .usr{margin-left:auto;font-size:12px;color:#cbd5e1}
+  .search{display:flex;gap:6px;align-items:center}
+  .search input{padding:5px 10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#e2e8f0;width:220px}
+  .search button,.btn{cursor:pointer;border:none;border-radius:6px;padding:5px 12px;font-size:12px}
+  .btn{padding:6px 14px;background:var(--primary);color:#fff}
+  .btn:hover{background:var(--primary-d)} .btn.ghost{background:#fff;color:var(--ep);border:1px solid var(--ep)}
+  .btn.green{background:var(--ok)} .btn.warn{background:var(--warn)} .btn.sm{padding:3px 9px;font-size:11px}
+  .layout{display:grid;grid-template-columns:200px 290px 1fr;height:calc(100vh - 52px)}
+  .col{background:var(--panel);border-right:1px solid var(--line);overflow:auto}
+  .col h3{margin:0;padding:10px 14px;font-size:12px;color:var(--sub);background:var(--soft);position:sticky;top:0;border-bottom:1px solid var(--line)}
+  .cat{padding:9px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}
+  .cat:hover{background:var(--soft)} .cat.active{background:var(--soft);color:var(--primary);font-weight:600;border-left:3px solid var(--primary)}
+  .cat .ct{font-size:11px;color:var(--sub);background:#f1f5f9;border-radius:8px;padding:1px 7px}
+  .tree{padding:6px 0}
+  .node{padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .node:hover{background:var(--soft)} .node.active{background:var(--soft);color:var(--primary)}
+  .node .ic{width:16px;text-align:center;color:var(--sub)}
+  .lv1{padding-left:8px} .lv2{padding-left:26px} .lv3{padding-left:44px} .lv4{padding-left:62px;color:var(--sub)}
+  .badge{font-size:10px;padding:1px 6px;border-radius:8px;margin-left:3px}
+  .b-draft{background:#fef3c7;color:#92400e} .b-arch{background:#dcfce7;color:#166534}
+  .b-rej{background:#fee2e2;color:#991b1b} .b-sec{background:#ede9fe;color:#5b21b6} .b-proj{background:#dbeafe;color:#1e40af}
+  main{padding:18px;overflow:auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px}
+  .field label{display:block;font-size:11px;color:var(--sub);margin-bottom:3px}
+  .field .v{font-size:13px} .field input,.field select,.field textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:#fff}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--sub);font-weight:600;background:#fafafa}
+  .attach{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px}
+  .attach .ext{width:34px;height:34px;border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ep);font-weight:700}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal .box{background:#fff;border-radius:12px;padding:22px;width:440px}
+  .modal h3{margin:0 0 14px} .modal .row{margin-bottom:12px}
+  .hidden{display:none}
+  .note{font-size:11px;color:var(--sub);margin-top:8px}
+  .empty{color:var(--sub);text-align:center;padding:40px}
+  .pill{display:inline-block;background:var(--soft);color:var(--primary);border-radius:10px;padding:2px 10px;font-size:11px;margin-left:6px}
+  .step{display:flex;gap:0;margin:6px 0 14px}
+  .step .s{flex:1;text-align:center;padding:6px 0;font-size:11px;border:1px solid var(--line);border-right:none;color:var(--sub)}
+  .step .s:last-child{border-right:1px solid var(--line)}
+  .step .s.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .tip{background:var(--soft2);border:1px solid #bbf7d0;color:#166534;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📁 档案管理系统</h1>
+  <span class="tag">设计原型 v1.0 · 零依赖 Mock</span>
+  <div class="search">
+    <input id="searchBox" placeholder="检索题名 / 责任者 / 档号…">
+    <button class="btn sm" onclick="doSearch()">检索</button>
+  </div>
+  <span class="usr">当前：档案管理员 · 张档</span>
+</header>
+
+<div class="layout">
+  <div class="col side"><h3>档案门类（一期 3 类）</h3><div id="catList"></div></div>
+  <div class="col"><h3>档案目录（三级）</h3><div class="tree" id="tree"></div></div>
+  <main id="detail"><div class="empty">← 请选择左侧门类与目录节点</div></main>
+</div>
+
+<div class="modal hidden" id="borrowModal">
+  <div class="box">
+    <h3>申请借阅</h3>
+    <div class="tip" id="borrowRoute"></div>
+    <div class="row"><label>目标</label><div id="borrowTarget" class="v"></div></div>
+    <div class="row"><label>利用用途</label><textarea id="borrowReason" rows="3" placeholder="请说明借阅用途"></textarea></div>
+    <div class="row"><label>利用天数</label><input id="borrowDays" type="number" value="7" min="1" max="30"></div>
+    <div style="text-align:right;margin-top:8px">
+      <button class="btn ghost" onclick="closeBorrow()">取消</button>
+      <button class="btn green" onclick="submitBorrow()">提交申请</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ Mock 数据（对齐 v1.0 基线） ============ */
+const CATS = [
+  {id:'DZ',name:'党政',template:[{key:'file_no',label:'文号',type:'text'},{key:'send_org',label:'发文机关',type:'text'},{key:'main_send',label:'主送',type:'text'}]},
+  {id:'KY',name:'科研',template:[{key:'project_no',label:'项目编号',type:'text',required:true},{key:'project_name',label:'课题名称',type:'text',required:true},{key:'leader',label:'负责人',type:'text'},{key:'result_type',label:'成果形式',type:'select',enum:['论文','专利','软件','报告']}]},
+  {id:'JJ',name:'基建',template:[{key:'project',label:'工程项目',type:'text'},{key:'building',label:'单体',type:'text'},{key:'stage',label:'阶段',type:'select',enum:['前期','施工','竣工']}]},
+];
+const ARCHIVES = [
+  {id:'a1',cat:'DZ',parent:null,isProject:false,no:'DZ-2026-001',title:'2026年度党委会议纪要汇编',year:2026,retention:'永久',secrecy:'内部',org:'党委办公室',status:'archived',
+   dyn:{file_no:'党办〔2026〕1号',send_org:'党委办公室',main_send:'各支部'},
+   files:[{id:'f1',title:'第3次党委会记录',date:'2026-03-12',author:'党委办公室',pages:5,no:'',dyn:{},attachments:[{id:'at1',name:'纪要.pdf',ext:'PDF',size:'1.2MB',type:'application/pdf'}]},
+          {id:'f2',title:'签到表',date:'2026-03-12',author:'',pages:1,no:'',dyn:{},attachments:[{id:'at2',name:'签到.jpg',ext:'JPG',size:'380KB',type:'image/jpeg'}]}]},
+  {id:'a2',cat:'DZ',parent:null,isProject:false,no:'DZ-2026-002',title:'党风廉政建设责任制文件',year:2026,retention:'30年',secrecy:'秘密',org:'纪委',status:'draft',
+   dyn:{file_no:'纪〔2026〕3号',send_org:'纪委',main_send:'全院'},
+   files:[{id:'f3',title:'责任书模板',date:'2026-04-01',author:'纪委',pages:3,no:'',dyn:{},attachments:[{id:'at3',name:'责任书.docx',ext:'DOCX',size:'56KB',type:'application/doc'}]}]},
+
+  {id:'p1',cat:'JJ',parent:null,isProject:true,no:'JJ-2025-P01',title:'门诊大楼建设项目',year:2025,retention:'永久',secrecy:'公开',org:'基建处',status:'archived',
+   dyn:{project:'门诊大楼',building:'主楼',stage:'竣工'},files:[],
+   children:[
+     {id:'a3',cat:'JJ',parent:'p1',isProject:false,no:'JJ-2025-P01-01',title:'前期文件卷',year:2025,retention:'永久',secrecy:'公开',org:'基建处',status:'archived',dyn:{project:'门诊大楼',building:'主楼',stage:'前期'},
+      files:[{id:'f4',title:'立项批复',date:'2025-01-10',author:'发改委',pages:8,no:'',dyn:{},attachments:[{id:'at4',name:'批复.pdf',ext:'PDF',size:'2.1MB',type:'application/pdf'}]}]},
+     {id:'a4',cat:'JJ',parent:'p1',isProject:false,no:'JJ-2025-P01-02',title:'施工文件卷',year:2025,retention:'永久',secrecy:'公开',org:'基建处',status:'archived',dyn:{project:'门诊大楼',building:'主楼',stage:'施工'},
+      files:[{id:'f5',title:'竣工图',date:'2025-12-20',author:'设计院',pages:30,no:'',dyn:{},attachments:[{id:'at5',name:'竣工图.pdf',ext:'PDF',size:'15MB',type:'application/pdf'}]}]},
+   ]},
+
+  {id:'a5',cat:'KY',parent:null,isProject:false,no:'KY-2026-010',title:'人工智能辅助诊断课题',year:2026,retention:'30年',secrecy:'内部',org:'科研处',status:'draft',
+   dyn:{project_no:'KY2026-010',project_name:'AI辅助诊断',leader:'李研究员',result_type:'论文'},
+   files:[{id:'f6',title:'结题报告',date:'2026-09-01',author:'李研究员',pages:20,no:'',dyn:{},attachments:[{id:'at6',name:'报告.pdf',ext:'PDF',size:'3.4MB',type:'application/pdf'}]}]},
+];
+const STATUS={archived:['b-arch','已归档'],draft:['b-draft','草稿'],rejected:['b-rej','退回']};
+const SEC={公开:'',内部:'b-sec',秘密:'b-sec',机密:'b-sec',绝密:'b-sec'};
+
+/* ============ 状态 ============ */
+let selCat='DZ', selNode=null;
+
+/* ============ 渲染门类 ============ */
+function renderCats(){const el=document.getElementById('catList');
+  el.innerHTML=CATS.map(c=>`<div class="cat ${c.id===selCat?'active':''}" onclick="pickCat('${c.id}')"><span>${c.name}</span><span class="ct">${count(c.id)}</span></div>`).join('');}
+function count(cat){let n=0;ARCHIVES.forEach(a=>{if(a.cat===cat)n++;if(a.children)a.children.forEach(ch=>{if(ch.cat===cat)n++});});return n;}
+
+/* ============ 渲染树 ============ */
+function renderTree(){const el=document.getElementById('tree');let h='';
+  ARCHIVES.filter(a=>a.cat===selCat).forEach(a=>{
+    h+=node(a,'lv1',a.isProject?'🏗️':'📂');
+    (a.files||[]).forEach(f=>{h+=node(f,'lv2','📄');(f.attachments||[]).forEach(at=>h+=node(at,'lv3','📎'));});
+    (a.children||[]).forEach(ch=>{h+=node(ch,'lv2','📁');(ch.files||[]).forEach(f=>{h+=node(f,'lv3','📄');(f.attachments||[]).forEach(at=>h+=node(at,'lv4','📎'));});});
+  });
+  el.innerHTML=h||'<div class="empty">该门类暂无档案</div>';}
+function node(o,lv,ic){const id=o.id;let label=o.title||o.name,badge='';
+  if(o.no)label=o.no+' '+o.title;
+  if(o.isProject)badge='<span class="badge b-proj">项目</span>';
+  if(o.status){const s=STATUS[o.status];badge+=`<span class="badge ${s[0]}">${s[1]}</span>`;}
+  if(o.secrecy&&o.secrecy!=='公开')badge+=`<span class="badge ${SEC[o.secrecy]}">${o.secrecy}</span>`;
+  if(o.ext)label=o.name;
+  return `<div class="node ${lv} ${selNode===id?'active':''}" onclick="pickNode('${id}')"><span class="ic">${ic}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${label}</span>${badge}</div>`;}
+
+/* ============ 选择 ============ */
+function pickCat(id){selCat=id;selNode=null;renderCats();renderTree();renderDetail();}
+function findNode(id){for(const a of ARCHIVES){if(a.id===id)return{node:a,type:'arc'};
+  for(const f of(a.files||[])){if(f.id===id)return{node:f,type:'file'};(f.attachments||[]).forEach(at=>{if(at.id===id)return{node:at,type:'att'};});}
+  for(const ch of(a.children||[])){if(ch.id===id)return{node:ch,type:'arc'};(ch.files||[]).forEach(f=>{if(f.id===id)return{node:f,type:'file'};(f.attachments||[]).forEach(at=>{if(at.id===id)return{node:at,type:'att'};});});}}
+  return{node:null};}
+function pickNode(id){selNode=id;renderTree();renderDetail();}
+
+/* ============ 详情 ============ */
+function renderDetail(){const el=document.getElementById('detail');const r=findNode(selNode);
+  if(!r.node){el.innerHTML='<div class="empty">← 请选择目录节点查看/著录</div>';return;}
+  if(r.type==='arc')el.innerHTML=arcPanel(r.node);else if(r.type==='file')el.innerHTML=filePanel(r.node);else el.innerHTML=attPanel(r.node);}
+function catOf(n){return CATS.find(x=>x.id===n.cat);}
+function dynForm(cat,obj){const tpl=cat.template||[];const dyn=obj.dyn||{};
+  return tpl.map(t=>{const v=dyn[t.key]||'';
+    if(t.type==='select'){const o=t.enum.map(e=>`<option ${e===v?'selected':''}>${e}</option>`).join('');
+      return `<div class="field"><label>${t.label}${t.required?' *':''}</label><select data-k="${t.key}">${o}</select></div>`;}
+    return `<div class="field"><label>${t.label}${t.required?' *':''}</label><input data-k="${t.key}" value="${v}"></div>`;}).join('');}
+function arcPanel(a){const c=catOf(a);
+  const step=`<div class="step"><div class="s ${a.status==='draft'?'on':''}">1 草稿</div><div class="s ${a.status==='draft'?'':'on'}">2 已归档</div><div class="s">3 利用/鉴定</div></div>`;
+  return `<div class="card"><h2>📂 档案（案卷级） <span class="pill">${c.name}</span>${a.isProject?'<span class="pill">项目</span>':''}</h2>${step}
+    <div class="meta">
+      <div class="field"><label>档号</label><div class="v">${a.no}</div></div>
+      <div class="field"><label>题名</label><input id="f_title" value="${a.title}"></div>
+      <div class="field"><label>年度</label><input id="f_year" value="${a.year}"></div>
+      <div class="field"><label>保管期限</label><select id="f_ret">${['永久','30年','10年'].map(x=>`<option ${x===a.retention?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="field"><label>密级</label><select id="f_sec">${['公开','内部','秘密','机密','绝密'].map(x=>`<option ${x===a.secrecy?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="field"><label>编制单位</label><input id="f_org" value="${a.org||''}"></div>
+    </div>
+    <div style="margin-top:12px"><h3 style="font-size:12px;color:var(--sub)">门类自定义元数据（动态表单）</h3><div class="meta">${dynForm(c,a)}</div></div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="saveArc('${a.id}')">保存著录</button>
+      <button class="btn ghost" onclick="addFile('${a.id}')">+ 新增文件(件)</button>
+      <button class="btn green" onclick="openBorrow('${a.id}','档案','${a.title}','${a.secrecy}')">申请借阅</button>
+      ${a.status==='draft'?`<button class="btn warn" onclick="submitArc('${a.id}')">提交归档</button>`:''}
+    </div>
+    <div class="note">状态：${STATUS[a.status][1]} · 档号按门类规则 `{fonds}-${a.cat}-{year}-{seq}` 生成（原型固定展示）· 归档后仅鉴定/销毁可改</div></div>
+  ${fileList(a)}`;}
+function fileList(a){const fs=a.files||[];
+  let rows=fs.map(f=>`<tr><td>📄 ${f.title}</td><td>${f.date||''}</td><td>${f.author||''}</td><td>${f.pages||''}页</td><td>${(f.attachments||[]).length}个</td><td><button class="btn sm ghost" onclick="pickNode('${f.id}')">查看</button></td></tr>`).join('');
+  return `<div class="card"><h2>📄 文件（件级）· 卷内目录</h2><table><thead><tr><th>文件标题</th><th>日期</th><th>责任者</th><th>页数</th><th>附件</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=6 class="empty">暂无文件，点“新增文件”</td></tr>'}</tbody></table></div>`;}
+function filePanel(f){return `<div class="card"><h2>📄 文件（件级）</h2><div class="meta">
+  <div class="field"><label>文件标题</label><input id="ft" value="${f.title}"></div>
+  <div class="field"><label>成文日期</label><input id="fd" value="${f.date||''}"></div>
+  <div class="field"><label>责任者</label><input id="fa" value="${f.author||''}"></div>
+  <div class="field"><label>页数</label><input id="fp" value="${f.pages||''}"></div>
+  <div class="field"><label>文号</label><input id="fn" value="${f.no||''}"></div></div>
+  <div style="margin-top:12px"><button class="btn" onclick="saveFile('${f.id}')">保存</button></div></div>${attList(f)}`;}
+function attList(f){const ats=f.attachments||[];
+  let rows=ats.map(a=>`<div class="attach"><div class="ext">${a.ext}</div><div style="flex:1"><div>${a.name}</div><div class="note">${a.size} · ${a.type}</div></div><button class="btn sm ghost" onclick="alert('原型：在线预览/流式转码')">预览</button><button class="btn sm" onclick="alert('原型：下载（按密级+借阅权限校验水印）')">下载</button></div>`).join('');
+  return `<div class="card"><h2>📎 附件（电子文件级）</h2>${rows}<div style="margin-top:8px"><button class="btn ghost" onclick="uploadAtt('${f.id}')">+ 上传附件</button></div><div class="note">附件实体存对象存储，DB 仅存对象 key + SHA256（防篡改）；预览/下载按密级+借阅权限校验并加访客水印</div></div>`;}
+function attPanel(at){return `<div class="card"><h2>📎 附件详情</h2><div class="meta">
+  <div class="field"><label>文件名</label><div class="v">${at.name}</div></div><div class="field"><label>类型</label><div class="v">${at.ext}</div></div>
+  <div class="field"><label>大小</label><div class="v">${at.size}</div></div><div class="field"><label>MIME</label><div class="v">${at.type}</div></div>
+  <div class="field"><label>版本</label><div class="v">v1</div></div><div class="field"><label>水印</label><div class="v">开启</div></div></div>
+  <div style="margin-top:12px"><button class="btn ghost" onclick="alert('预览')">在线预览</button><button class="btn" onclick="alert('下载')">下载</button></div></div>`;}
+
+/* ============ 交互（Mock） ============ */
+function saveArc(id){const r=findNode(id);r.node.title=document.getElementById('f_title').value;r.node.year=+document.getElementById('f_year').value;
+  r.node.retention=document.getElementById('f_ret').value;r.node.secrecy=document.getElementById('f_sec').value;r.node.org=document.getElementById('f_org').value;
+  const c=catOf(r.node);(c.template||[]).forEach(t=>{const el=document.querySelector(`[data-k="${t.key}"]`);if(el)r.node.dyn[t.key]=el.value;});
+  renderTree();renderDetail();toast('已保存著录（原型：仅内存）');}
+function saveFile(id){const r=findNode(id);r.node.title=document.getElementById('ft').value;toast('文件已保存');}
+function addFile(aid){const r=findNode(aid);const nf={id:'f'+Date.now(),title:'新文件（请著录）',date:'',author:'',pages:0,no:'',dyn:{},attachments:[]};(r.node.files=r.node.files||[]).push(nf);renderTree();pickNode(nf.id);toast('已新增文件');}
+function uploadAtt(fid){const r=findNode(fid);const na={id:'at'+Date.now(),name:'新附件.pdf',ext:'PDF',size:'0.5MB',type:'application/pdf'};(r.node.attachments=r.node.attachments||[]).push(na);renderDetail();toast('附件已上传（模拟）');}
+function submitArc(id){const r=findNode(id);r.node.status='archived';renderTree();renderDetail();toast('提交并审核通过 → 已归档');}
+
+/* ============ 检索 ============ */
+function doSearch(){const q=document.getElementById('searchBox').value.trim().toLowerCase();if(!q){renderTree();return;}
+  const hits=[];ARCHIVES.filter(a=>a.cat===selCat).forEach(a=>walk(a,hits,q));(ARCHIVES.filter(a=>a.cat===selCat).flatMap(a=>a.children||[])).forEach(ch=>walk(ch,hits,q));
+  if(!hits.length){document.getElementById('tree').innerHTML='<div class="empty">未检索到“'+q+'”</div>';return;}
+  document.getElementById('tree').innerHTML=hits.map(h=>`<div class="node lv1 active" onclick="pickNode('${h.id}')"><span class="ic">🔍</span>${h.label}</div>`).join('');selNode=hits[0].id;renderDetail();}
+function walk(o,h,q){const lbl=(o.title||o.name||'')+(o.no||'')+(o.author||'');if(lbl.toLowerCase().includes(q))hits.push({id:o.id,label:(o.no?o.no+' ':'')+(o.title||o.name)});(o.files||[]).forEach(f=>{walk(f,h,q);(f.attachments||[]).forEach(at=>walk(at,h,q));});(o.children||[]).forEach(ch=>walk(ch,h,q));}
+
+/* ============ 借阅（含密级路由） ============ */
+let borrowTarget={};
+function openBorrow(id,type,title,secrecy){borrowTarget={id,type,title};
+  const route=secrecy==='公开'?'公开档案：部门档案员直接批准':(secrecy==='内部'?'内部档案：档案科长批准':'秘密及以上：分管领导批准');
+  document.getElementById('borrowRoute').textContent='审批路由（按密级）：'+route;
+  document.getElementById('borrowTarget').textContent=type+'：'+title;document.getElementById('borrowModal').classList.remove('hidden');}
+function closeBorrow(){document.getElementById('borrowModal').classList.add('hidden');}
+function submitBorrow(){const r=document.getElementById('borrowReason').value;if(!r.trim()){alert('请填写利用用途');return;}closeBorrow();toast('借阅申请已提交 → 按密级路由审批（原型模拟）');}
+
+/* ============ toast ============ */
+function toast(m){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 18px;border-radius:8px;z-index:99;font-size:13px';document.body.appendChild(t);}t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
+
+renderCats();renderTree();renderDetail();
+</script>
+</body>
+</html>

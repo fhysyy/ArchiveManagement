@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "HnVRd4ZVTJY=",
+  "success": true,
+  "projectFilePath": "D:\\Projectcode\\档案管理\\src\\ArchiveManagement.Domain\\ArchiveManagement.Domain.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\kenjt\\.nuget\\packages\\freesql\\3.5.311\\freesql.3.5.311.nupkg.sha512"
+  ],
+  "logs": []
+}

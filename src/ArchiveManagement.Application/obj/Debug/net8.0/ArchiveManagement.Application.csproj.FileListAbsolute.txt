@@ -1,0 +1,17 @@
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Application.deps.json
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Application.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Application.pdb
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Domain.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Infrastructure.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Domain.pdb
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\bin\Debug\net8.0\ArchiveManagement.Infrastructure.pdb
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.csproj.AssemblyReference.cache
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.AssemblyInfoInputs.cache
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.AssemblyInfo.cs
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.csproj.CoreCompileInputs.cache
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveM.52C86436.Up2Date
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\refint\ArchiveManagement.Application.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.pdb
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ref\ArchiveManagement.Application.dll

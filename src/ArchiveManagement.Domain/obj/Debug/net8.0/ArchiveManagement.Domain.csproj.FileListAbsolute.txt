@@ -1,0 +1,13 @@
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\bin\Debug\net8.0\ArchiveManagement.Domain.deps.json
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\bin\Debug\net8.0\ArchiveManagement.Domain.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\bin\Debug\net8.0\ArchiveManagement.Domain.pdb
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.csproj.AssemblyReference.cache
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.AssemblyInfoInputs.cache
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.AssemblyInfo.cs
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.csproj.CoreCompileInputs.cache
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\refint\ArchiveManagement.Domain.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.pdb
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ref\ArchiveManagement.Domain.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveM.48F1CAC5.Up2Date
