@@ -7,6 +7,19 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        // 拆分大依赖，避免单包 1MB+
+        manualChunks: {
+          vue: ['vue', 'vue-router', 'pinia'],
+          'element-plus': ['element-plus', '@element-plus/icons-vue'],
+          axios: ['axios']
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {

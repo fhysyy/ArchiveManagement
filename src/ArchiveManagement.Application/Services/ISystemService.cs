@@ -12,6 +12,8 @@ public interface ISystemService
     Task<List<UserDto>> ListUsersAsync();
     Task<UserDto> CreateUserAsync(CreateUserDto dto);
     Task<bool> DeleteUserAsync(long id);
+    Task<bool> ChangePasswordAsync(long id, string newPassword);
+    Task<bool> SetUserStatusAsync(long id, int status);
     Task<List<RoleDto>> ListRolesAsync();
     Task<RoleDto> CreateRoleAsync(CreateRoleDto dto);
     Task<bool> DeleteRoleAsync(long id);
@@ -120,6 +122,27 @@ public class SystemService : ISystemService
     {
         await _db.Delete<SysUserRole>().Where(x => x.UserId == id).ExecuteAffrowsAsync();
         return await _db.Delete<SysUser>().Where(u => u.Id == id).ExecuteAffrowsAsync() > 0;
+    }
+
+    public async Task<bool> ChangePasswordAsync(long id, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword)) throw new ArgumentException("新密码不能为空");
+        var u = await _db.Select<SysUser>().Where(x => x.Id == id).FirstAsync();
+        if (u == null) return false;
+        SecurityHelper.HashPassword(newPassword, out var h, out var s);
+        return await _db.Update<SysUser>()
+            .Where(x => x.Id == id)
+            .Set(x => x.PasswordHash, h).Set(x => x.Salt, s)
+            .ExecuteAffrowsAsync() > 0;
+    }
+
+    /// <summary>启用(1) / 禁用(0)</summary>
+    public async Task<bool> SetUserStatusAsync(long id, int status)
+    {
+        return await _db.Update<SysUser>()
+            .Where(x => x.Id == id)
+            .Set(x => x.Status, status)
+            .ExecuteAffrowsAsync() > 0;
     }
 
     public async Task<List<RoleDto>> ListRolesAsync()

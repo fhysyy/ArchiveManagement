@@ -1,5 +1,6 @@
 using ArchiveManagement.Application.Dtos;
 using ArchiveManagement.Domain.Entities;
+using ArchiveManagement.Domain.Enums;
 using ArchiveManagement.Infrastructure;
 using FreeSql;
 using System.Security.Cryptography;
@@ -10,7 +11,8 @@ public interface IAttachmentService
 {
     Task<List<AttachmentDto>> ListByFileAsync(long fileItemId);
     Task<AttachmentUploadResultDto> UploadAsync(long fileItemId, string fileName, string? contentType, long size, Stream content, long? uploaderId);
-    Task<(Stream? stream, AttachmentDto? meta)> DownloadAsync(long id);
+    /// <summary>下载/预览：校验查看权限或已批准的借阅，未授权抛异常</summary>
+    Task<(Stream? stream, AttachmentDto? meta)> DownloadAsync(long id, string? username = null);
     Task<bool> DeleteAsync(long id);
 }
 
@@ -18,7 +20,11 @@ public class AttachmentService : IAttachmentService
 {
     private readonly IFreeSql _db;
     private readonly IObjectStorage _storage;
-    public AttachmentService(IFreeSql db, IObjectStorage storage) => (_db, _storage) = (db, storage);
+    private readonly IPermissionService _perm;
+    private readonly IAuditLogger _audit;
+
+    public AttachmentService(IFreeSql db, IObjectStorage storage, IPermissionService perm, IAuditLogger audit)
+        => (_db, _storage, _perm, _audit) = (db, storage, perm, audit);
 
     public async Task<List<AttachmentDto>> ListByFileAsync(long fileItemId)
     {
@@ -52,6 +58,8 @@ public class AttachmentService : IAttachmentService
             UploadedAt = DateTime.UtcNow
         };
         e.Id = await _db.Insert(e).ExecuteIdentityAsync();
+        await _audit.LogAsync("attachment.upload", "Attachment", e.Id,
+            $"上传附件 {e.OriginalName}（SHA256={e.Hash}）");
         return new AttachmentUploadResultDto
         {
             Id = e.Id,
@@ -61,11 +69,37 @@ public class AttachmentService : IAttachmentService
         };
     }
 
-    public async Task<(Stream? stream, AttachmentDto? meta)> DownloadAsync(long id)
+    public async Task<(Stream? stream, AttachmentDto? meta)> DownloadAsync(long id, string? username = null)
     {
         var e = await _db.Select<Attachment>().Where(a => a.Id == id).FirstAsync();
         if (e == null) return (null, null);
+
+        // 回溯到所属档案，做权限校验
+        var file = await _db.Select<FileItem>().Where(f => f.Id == e.FileItemId).FirstAsync();
+        if (file != null)
+        {
+            var archive = await _db.Select<Archive>().Where(a => a.Id == file.ArchiveId).FirstAsync();
+            if (archive != null)
+            {
+                var p = await _perm.ResolveAsync(username);
+                var allowed = _perm.CanSee(p, archive.CategoryId, archive.SecrecyLevel);
+                // 或：本人有已批准的借阅（未逾期）也可访问
+                if (!allowed && p.UserId.HasValue)
+                {
+                    allowed = await _db.Select<BorrowRequest>()
+                        .Where(b => b.ApplicantId == p.UserId.Value && b.TargetId == archive.Id
+                                 && b.TargetType == "archive"
+                                 && (b.Status == BorrowStatus.Approved)
+                                 && (b.ExpireAt == null || b.ExpireAt > DateTime.UtcNow))
+                        .AnyAsync();
+                }
+                if (!allowed)
+                    throw new UnauthorizedAccessException("无权查看该附件：既无门类查看权限，也无有效借阅授权");
+            }
+        }
+
         var stream = await _storage.GetAsync(e.FileName);
+        await _audit.LogAsync("attachment.download", "Attachment", id, $"下载/预览附件 {e.OriginalName}");
         return (stream, ToDto(e));
     }
 
@@ -74,7 +108,9 @@ public class AttachmentService : IAttachmentService
         var e = await _db.Select<Attachment>().Where(a => a.Id == id).FirstAsync();
         if (e == null) return false;
         await _storage.DeleteAsync(e.FileName);
-        return await _db.Delete<Attachment>().Where(a => a.Id == id).ExecuteAffrowsAsync() > 0;
+        var ok = await _db.Delete<Attachment>().Where(a => a.Id == id).ExecuteAffrowsAsync() > 0;
+        if (ok) await _audit.LogAsync("attachment.delete", "Attachment", id, $"删除附件 {e.OriginalName}");
+        return ok;
     }
 
     private static AttachmentDto ToDto(Attachment a) => new()

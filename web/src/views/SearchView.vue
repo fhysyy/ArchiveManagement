@@ -53,6 +53,14 @@
       <el-table-column prop="year" label="年度" width="80" />
       <el-table-column prop="retention" label="保管期限" width="100" />
         <el-table-column prop="secrecyLevel" label="密级" width="90" />
+      <!-- 门类自定义字段列：按所选门类模板动态渲染 -->
+      <el-table-column
+        v-for="f in metaColumns"
+        :key="f.key"
+        :label="f.label"
+        :prop="`__meta_${f.key}`"
+        min-width="120"
+        show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="90">
           <template #default="{ row }"><el-tag size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
@@ -90,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import api from '@/api/request'
 import { searchArchives, suggest } from '@/api/search'
 import { createBorrow } from '@/api/borrow'
@@ -129,6 +137,16 @@ async function loadCategories() {
   categories.value = data.data
 }
 // 检索联想
+// 所选门类的自定义字段（用于结果表动态列）
+const metaColumns = ref<{ key: string; label: string }[]>([])
+function refreshMetaColumns() {
+  const c = categories.value.find(x => x.id === q.categoryId)
+  const tpl = safeParse(c?.templateJson)
+  metaColumns.value = Array.isArray(tpl)
+    ? tpl.filter((f: any) => f?.key).map((f: any) => ({ key: f.key, label: f.label || f.key }))
+    : []
+}
+
 async function querySuggest(kw: string, cb: (arr: { value: string }[]) => void) {
   if (!kw) { cb([]); return }
   const { data } = await suggest(kw)
@@ -157,11 +175,20 @@ async function doSearch() {
       sortBy: q.sortBy, sortDir: q.sortDir
     }
     const { data } = await searchArchives(payload)
-    rows.value = data.data.items
+    // 把 dynamicFields 里的自定义字段摊平成 __meta_xxx，供动态列展示
+    rows.value = (data.data.items ?? []).map((a: any) => {
+      const meta = safeParse(a.dynamicFields)
+      const flat: any = { ...a }
+      for (const f of metaColumns.value) flat[`__meta_${f.key}`] = meta?.[f.key] ?? ''
+      return flat
+    })
     total.value = data.data.total
   } finally {
     loading.value = false
   }
+}
+function safeParse(json?: string) {
+  try { return JSON.parse(json || '{}') } catch { return {} }
 }
 function openBorrow(row: ArchiveDto) {
   cur.value = row
@@ -176,8 +203,12 @@ async function onBorrow() {
   ElMessage.success('借阅申请已提交，等待审批')
 }
 
+// 切换门类 → 同步结果表的自定义字段列
+watch(() => q.categoryId, () => refreshMetaColumns())
+
 onMounted(async () => {
   await loadCategories()
+  refreshMetaColumns()
   await doSearch()
 })
 </script>

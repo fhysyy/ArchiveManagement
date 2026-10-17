@@ -31,6 +31,18 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 带水印的在线预览 -->
+    <el-dialog v-model="showPreview" :title="`预览 —— ${previewRow?.originalName ?? ''}`" width="70%">
+      <div class="preview-wrap">
+        <img v-if="previewRow && isImage(previewRow)" :src="previewUrl(previewRow)" class="preview-img" />
+        <iframe v-else-if="previewRow" :src="previewUrl(previewRow)" class="preview-frame" />
+        <div class="watermark-layer" v-if="previewRow">
+          <span v-for="i in 24" :key="i">{{ watermarkText }}</span>
+        </div>
+      </div>
+      <div class="preview-tip">预览已叠加访客水印（前端 DOM 水印，防随手截屏；强防泄密需服务端渲染水印）</div>
+    </el-dialog>
   </div>
 </template>
 
@@ -39,8 +51,11 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listAttachments, uploadAttachment, deleteAttachment, downloadAttachment } from '@/api/attachment'
 import type { AttachmentDto } from '@/types/models'
+import { useAuthStore } from '@/store/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadFile } from 'element-plus'
+
+const auth = useAuthStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -69,9 +84,22 @@ async function onPick(upload: UploadFile) {
 async function onDownload(row: AttachmentDto) {
   await downloadAttachment(row.id, row.originalName)
 }
+// 在线预览（带访客水印覆盖层）
+const showPreview = ref(false)
+const previewRow = ref<AttachmentDto | null>(null)
+const watermarkText = ref('')
 function onPreview(row: AttachmentDto) {
-  // 在线预览：走 inline 预览端点，在新标签页打开
-  window.open(`/api/attachments/${row.id}/preview`, '_blank')
+  previewRow.value = row
+  const who = auth.user?.name || auth.user?.username || '访客'
+  watermarkText.value = `${who} · ${new Date().toLocaleString('zh-CN')}`
+  showPreview.value = true
+}
+function previewUrl(row: AttachmentDto) {
+  const t = localStorage.getItem('token')
+  return `/api/attachments/${row.id}/preview${t ? `?token=${encodeURIComponent(t)}` : ''}`
+}
+function isImage(row: AttachmentDto) {
+  return (row.mimeType || '').startsWith('image/')
 }
 async function onDelete(row: AttachmentDto) {
   await ElMessageBox.confirm(`确认删除附件「${row.originalName}」？`, '提示', { type: 'warning' })
@@ -89,4 +117,16 @@ onMounted(load)
 <style scoped>
 .crumb { margin-bottom: 4px; color: #475569; }
 .tip { color: #94a3b8; font-size: 12px; }
+.preview-wrap { position: relative; height: 60vh; background: #f1f5f9; overflow: hidden; }
+.preview-img { max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
+.preview-frame { width: 100%; height: 100%; border: 0; }
+.watermark-layer {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; flex-wrap: wrap; gap: 60px; align-content: space-around; justify-content: space-around;
+  transform: rotate(-25deg);
+}
+.watermark-layer span {
+  color: rgba(30, 41, 59, 0.16); font-size: 15px; font-weight: 600; white-space: nowrap;
+}
+.preview-tip { margin-top: 8px; color: #94a3b8; font-size: 12px; }
 </style>

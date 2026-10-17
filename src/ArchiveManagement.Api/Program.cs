@@ -1,3 +1,4 @@
+using ArchiveManagement.Api;
 using ArchiveManagement.Application.Services;
 using ArchiveManagement.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -21,6 +22,11 @@ builder.Services.AddScoped<IAppraisalService, AppraisalService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<ISystemService, SystemService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+// 审计日志需要取当前操作人与 IP（Application 层抽象，Api 层提供 HTTP 实现）
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // JWT 认证

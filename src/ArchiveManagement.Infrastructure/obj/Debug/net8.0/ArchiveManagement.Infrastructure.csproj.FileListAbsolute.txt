@@ -13,3 +13,4 @@ D:\Projectcode\档案管理\src\ArchiveManagement.Infrastructure\obj\Debug\net8.
 D:\Projectcode\档案管理\src\ArchiveManagement.Infrastructure\obj\Debug\net8.0\refint\ArchiveManagement.Infrastructure.dll
 D:\Projectcode\档案管理\src\ArchiveManagement.Infrastructure\obj\Debug\net8.0\ArchiveManagement.Infrastructure.pdb
 D:\Projectcode\档案管理\src\ArchiveManagement.Infrastructure\obj\Debug\net8.0\ref\ArchiveManagement.Infrastructure.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Infrastructure\obj\Debug\net8.0\ArchiveManagement.Infrastructure.sourcelink.json

@@ -15,3 +15,4 @@ D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\A
 D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\refint\ArchiveManagement.Application.dll
 D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.pdb
 D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ref\ArchiveManagement.Application.dll
+D:\Projectcode\档案管理\src\ArchiveManagement.Application\obj\Debug\net8.0\ArchiveManagement.Application.sourcelink.json

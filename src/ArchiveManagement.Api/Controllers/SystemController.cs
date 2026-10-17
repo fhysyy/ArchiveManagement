@@ -38,6 +38,15 @@ public class UsersController : ControllerBase
 
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id) => Ok(new { code = 0, data = await _svc.DeleteUserAsync(id) });
+
+    [HttpPut("{id:long}/password")]
+    public async Task<IActionResult> ChangePassword(long id, [FromBody] ChangePasswordDto dto)
+        => Ok(new { code = 0, data = await _svc.ChangePasswordAsync(id, dto.NewPassword) });
+
+    /// <summary>启用(1) / 禁用(0)</summary>
+    [HttpPut("{id:long}/status")]
+    public async Task<IActionResult> SetStatus(long id, [FromBody] SetUserStatusDto dto)
+        => Ok(new { code = 0, data = await _svc.SetUserStatusAsync(id, dto.Status) });
 }
 
 [ApiController]

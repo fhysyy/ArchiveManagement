@@ -17,7 +17,18 @@ public interface IBorrowService
 public class BorrowService : IBorrowService
 {
     private readonly IFreeSql _db;
-    public BorrowService(IFreeSql db) => _db = db;
+    private readonly IAuditLogger _audit;
+    public BorrowService(IFreeSql db, IAuditLogger audit) => (_db, _audit) = (db, audit);
+
+    /// <summary>惰性逾期处理：已批准且已过期的借阅置为 Expired</summary>
+    private async Task SweepExpiredAsync()
+    {
+        var now = DateTime.UtcNow;
+        await _db.Update<BorrowRequest>()
+            .Where(b => b.Status == BorrowStatus.Approved && b.ExpireAt != null && b.ExpireAt < now)
+            .Set(b => b.Status, BorrowStatus.Expired)
+            .ExecuteAffrowsAsync();
+    }
 
     private async Task<long?> ResolveUserId(string? username)
     {
@@ -39,11 +50,13 @@ public class BorrowService : IBorrowService
             Status = BorrowStatus.Pending
         };
         e.Id = await _db.Insert(e).ExecuteIdentityAsync();
+        await _audit.LogAsync("borrow.create", "BorrowRequest", e.Id, $"发起借阅 target={dto.TargetType}#{dto.TargetId}");
         return await ToDto(e);
     }
 
     public async Task<List<BorrowDto>> ListAsync(string role, string? viewerName)
     {
+        await SweepExpiredAsync();
         var q = _db.Select<BorrowRequest>();
         if (string.Equals(role, "applicant", StringComparison.OrdinalIgnoreCase))
         {
@@ -72,6 +85,7 @@ public class BorrowService : IBorrowService
         e.ApprovedAt = DateTime.UtcNow;
         e.ExpireAt = DateTime.UtcNow.AddDays(days);
         await _db.Update<BorrowRequest>().SetSource(e).ExecuteAffrowsAsync();
+        await _audit.LogAsync("borrow.approve", "BorrowRequest", id, $"审批通过，{days} 天，到期 {e.ExpireAt:yyyy-MM-dd}");
         return await ToDto(e);
     }
 
@@ -94,6 +108,7 @@ public class BorrowService : IBorrowService
         if (e == null) return null;
         e.Status = BorrowStatus.Returned;
         await _db.Update<BorrowRequest>().SetSource(e).ExecuteAffrowsAsync();
+        await _audit.LogAsync("borrow.return", "BorrowRequest", id, "归还");
         return await ToDto(e);
     }
 
@@ -107,6 +122,7 @@ public class BorrowService : IBorrowService
         e.ExpireAt = (e.ExpireAt ?? DateTime.UtcNow).AddDays(add);
         e.Days = (e.Days ?? 0) + add;
         await _db.Update<BorrowRequest>().SetSource(e).ExecuteAffrowsAsync();
+        await _audit.LogAsync("borrow.renew", "BorrowRequest", id, $"续期 {add} 天，到期 {e.ExpireAt:yyyy-MM-dd}");
         return await ToDto(e);
     }
 

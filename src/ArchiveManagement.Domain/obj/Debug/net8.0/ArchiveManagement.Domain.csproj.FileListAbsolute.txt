@@ -10,4 +10,4 @@ D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\Archiv
 D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\refint\ArchiveManagement.Domain.dll
 D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.pdb
 D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ref\ArchiveManagement.Domain.dll
-D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveM.48F1CAC5.Up2Date
+D:\Projectcode\档案管理\src\ArchiveManagement.Domain\obj\Debug\net8.0\ArchiveManagement.Domain.sourcelink.json

@@ -48,7 +48,15 @@ public static class FreeSqlSetup
 
         services.AddSingleton<IFreeSql>(fsql);
 
-        var storageRoot = config["Storage:LocalPath"] ?? Path.Combine(AppContext.BaseDirectory, "uploads");
+        // 未配置时回退到持久目录（ProgramData），不要落在 AppContext.BaseDirectory（bin）里，避免重新发布后附件丢失
+        var storageRoot = config["Storage:LocalPath"];
+        if (string.IsNullOrWhiteSpace(storageRoot))
+        {
+            var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            storageRoot = Path.Combine(
+                string.IsNullOrWhiteSpace(programData) ? "C:\\ProgramData" : programData,
+                "ArchiveManagement", "uploads");
+        }
         services.AddSingleton<IObjectStorage>(new LocalObjectStorage(storageRoot));
         return services;
     }

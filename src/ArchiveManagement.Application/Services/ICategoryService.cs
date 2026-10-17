@@ -19,7 +19,10 @@ public class CategoryService : ICategoryService
 
     public async Task<List<CategoryDto>> ListAsync()
     {
-        var list = await _db.Select<ArchiveCategory>().OrderBy(c => c.SortOrder).ToListAsync();
+        // 只返回启用门类
+        var list = await _db.Select<ArchiveCategory>()
+            .Where(c => c.Status == 1)
+            .OrderBy(c => c.SortOrder).ToListAsync();
         return list.Select(ToDto).ToList()!;
     }
 
@@ -50,8 +53,17 @@ public class CategoryService : ICategoryService
         return ToDto(e);
     }
 
+    /// <summary>停用门类（逻辑删除）：契约要求"停用/删除"，避免物理删除导致档案门类悬空</summary>
     public async Task<bool> DeleteAsync(long id)
-        => await _db.Delete<ArchiveCategory>().Where(c => c.Id == id).ExecuteAffrowsAsync() > 0;
+    {
+        var used = await _db.Select<Archive>().Where(a => a.CategoryId == id && !a.IsDeleted).AnyAsync();
+        if (used) throw new InvalidOperationException("该门类下仍有档案，不能停用");
+        var aff = await _db.Update<ArchiveCategory>()
+            .Where(c => c.Id == id)
+            .Set(c => c.Status, 0)
+            .ExecuteAffrowsAsync();
+        return aff > 0;
+    }
 
     private static CategoryDto? ToDto(ArchiveCategory? e) => e == null ? null : new CategoryDto
     {

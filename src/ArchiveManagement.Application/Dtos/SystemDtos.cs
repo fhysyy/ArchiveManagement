@@ -50,6 +50,16 @@ public class CreateRoleDto
     public string Name { get; set; } = string.Empty;
 }
 
+public class ChangePasswordDto
+{
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class SetUserStatusDto
+{
+    public int Status { get; set; } // 1=启用 0=禁用
+}
+
 /// <summary>五维权限：角色 × 门类 × 操作 × 密级</summary>
 public class PermissionDto
 {

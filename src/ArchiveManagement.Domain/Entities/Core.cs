@@ -61,6 +61,8 @@ public class Archive
     [Column(StringLength = -1)]
     public string? DynamicFields { get; set; }               // 门类自定义元数据(JSON)
     public long? CreatorId { get; set; }
+    public bool IsDeleted { get; set; } = false;             // 逻辑删除标记
+    public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
@@ -81,6 +83,8 @@ public class FileItem
     public string? ProjectNo { get; set; }
     [Column(StringLength = -1)]
     public string? DynamicFields { get; set; }
+    public bool IsDeleted { get; set; } = false;             // 逻辑删除标记
+    public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

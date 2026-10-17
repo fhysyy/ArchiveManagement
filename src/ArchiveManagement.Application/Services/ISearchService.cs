@@ -7,18 +7,20 @@ namespace ArchiveManagement.Application.Services;
 
 public interface ISearchService
 {
-    Task<PagedArchiveResult> SearchAsync(SearchArchiveDto dto);
+    Task<PagedArchiveResult> SearchAsync(SearchArchiveDto dto, string? username = null);
     Task<List<string>> SuggestAsync(string q, int limit = 10);
 }
 
 public class SearchService : ISearchService
 {
     private readonly IFreeSql _db;
-    public SearchService(IFreeSql db) => _db = db;
+    private readonly IPermissionService _perm;
+    public SearchService(IFreeSql db, IPermissionService perm) => (_db, _perm) = (db, perm);
 
-    public async Task<PagedArchiveResult> SearchAsync(SearchArchiveDto dto)
+    public async Task<PagedArchiveResult> SearchAsync(SearchArchiveDto dto, string? username = null)
     {
-        var q = _db.Select<Archive>();
+        var p = await _perm.ResolveAsync(username);
+        var q = _db.Select<Archive>().Where(a => !a.IsDeleted);
 
         if (dto.CategoryId.HasValue)
             q = q.Where(a => a.CategoryId == dto.CategoryId.Value);
@@ -38,7 +40,9 @@ public class SearchService : ISearchService
         if (!string.IsNullOrWhiteSpace(dto.Status) && Enum.TryParse<ArchiveStatus>(dto.Status, out var st))
             q = q.Where(a => a.Status == st);
 
-        var total = await q.CountAsync();
+        // 权限：可见门类收窄下推到 DB，减少取回量
+        if (!p.IsAdmin && p.AllowedCategoryIds != null)
+            q = q.Where(a => p.AllowedCategoryIds.Contains(a.CategoryId));
 
         // 排序
         string order = (dto.SortDir ?? "desc").Trim().ToLower() == "asc" ? "ASC" : "DESC";
@@ -51,13 +55,18 @@ public class SearchService : ISearchService
         };
         q = q.OrderBy($"{field} {order}");
 
+        // 密级过滤在内存完成（便于统一走 CanSee），再做分页
+        var all = await q.ToListAsync();
+        var visible = all.Where(a => _perm.CanSee(p, a.CategoryId, a.SecrecyLevel)).ToList();
+
         int page = dto.Page < 1 ? 1 : dto.Page;
         int size = dto.PageSize < 1 ? 20 : (dto.PageSize > 200 ? 200 : dto.PageSize);
-        var items = await q.Page(page, size).ToListAsync();
+        var items = visible.Skip((page - 1) * size).Take(size).ToList();
+        var total = visible.Count;
 
         return new PagedArchiveResult
         {
-            Total = (int)total,
+            Total = total,
             Page = page,
             PageSize = size,
             TotalPages = (int)Math.Ceiling(total / (double)size),

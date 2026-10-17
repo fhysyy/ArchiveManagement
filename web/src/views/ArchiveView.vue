@@ -19,6 +19,7 @@
       <el-table-column label="操作" width="230">
         <template #default="{ row }">
           <el-button size="small" @click="goFiles(row)">文件 ›</el-button>
+          <el-button size="small" type="info" plain @click="openTree(row)">三级树</el-button>
           <el-button v-if="row.status === 'Draft'" size="small" type="primary" plain @click="onSubmit(row)">提交归档</el-button>
           <template v-else-if="row.status === 'Submitted'">
             <el-button size="small" type="success" plain @click="openAudit(row, 'approve')">通过</el-button>
@@ -51,6 +52,17 @@
         <el-button @click="showCreate = false">取消</el-button>
         <el-button type="primary" @click="onCreate">保存</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 三级树：档案 → 文件 → 附件 -->
+    <el-dialog v-model="showTree" :title="`三级结构 —— ${treeTitle}`" width="620px">
+      <el-tree :data="treeData" :props="treeProps" default-expand-all node-key="id">
+        <template #default="{ data }">
+          <span>{{ data.label }}</span>
+          <el-tag v-if="data.type" size="small" style="margin-left: 8px">{{ data.type }}</el-tag>
+        </template>
+      </el-tree>
+      <template #footer><el-button @click="showTree = false">关闭</el-button></template>
     </el-dialog>
 
     <!-- 批量导入：一行一条题名 -->
@@ -116,6 +128,34 @@ const statusMap: Record<string, { label: string; type: string }> = {
 }
 function statusLabel(s: string) { return statusMap[s]?.label ?? s }
 function statusType(s: string) { return (statusMap[s]?.type ?? '') as '' | 'info' | 'success' | 'warning' | 'danger' }
+
+// 三级树
+const showTree = ref(false)
+const treeTitle = ref('')
+const treeData = ref<any[]>([])
+const treeProps = { children: 'children', label: 'label' }
+async function openTree(row: ArchiveDto) {
+  treeTitle.value = row.title
+  const { data } = await api.get(`/archives/${row.id}/tree`)
+  const t = data.data
+  treeData.value = [{
+    label: `${t.archive?.archiveNo ?? ''} ${t.archive?.title ?? ''}`,
+    type: '档案',
+    children: (t.files ?? []).map((f: any) => ({
+      label: `${f.file?.seqNo ?? '-'}. ${f.file?.title ?? ''}`,
+      type: '文件',
+      children: (f.attachments ?? []).map((a: any) => ({
+        label: `${a.originalName ?? ''}（${formatSize(a.sizeBytes)}）`,
+        type: '附件'
+      }))
+    }))
+  }]
+  showTree.value = true
+}
+function formatSize(b?: number) {
+  if (!b) return '-'
+  return b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`
+}
 
 // 批量导入
 const showImport = ref(false)

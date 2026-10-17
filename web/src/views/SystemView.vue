@@ -27,8 +27,17 @@
           <el-table-column prop="name" label="姓名" width="140" />
           <el-table-column prop="dept" label="部门" />
           <el-table-column prop="roleName" label="角色" width="140" />
-          <el-table-column label="操作" width="100">
+          <el-table-column label="状态" width="80">
             <template #default="{ row }">
+              <el-tag size="small" :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="240">
+            <template #default="{ row }">
+              <el-button size="small" @click="openPwd(row)">改密码</el-button>
+              <el-button size="small" :type="row.status === 1 ? 'warning' : 'success'" plain @click="onToggleStatus(row)">
+                {{ row.status === 1 ? '禁用' : '启用' }}
+              </el-button>
               <el-button size="small" type="danger" plain @click="onDelUser(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -98,6 +107,16 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="showPwd" :title="`修改密码 —— ${pwdUser?.username ?? ''}`" width="380px">
+      <el-form label-width="80px">
+        <el-form-item label="新密码"><el-input v-model="newPwd" show-password placeholder="至少 6 位" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showPwd = false">取消</el-button>
+        <el-button type="primary" @click="onSubmitPwd">保存</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="showRole" title="新增角色" width="380px">
       <el-form label-width="80px">
         <el-form-item label="编码"><el-input v-model="roleForm.code" placeholder="如 ARCHIVIST" /></el-form-item>
@@ -115,6 +134,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { getHealth, triggerBackup, listUsers, createUser, deleteUser, listRoles, createRole, deleteRole, getPermissions, setPermissions } from '@/api/system'
 import { listCategories } from '@/api/category'
+import api from '@/api/request'
 import type { HealthDto, BackupResultDto, UserDto, CreateUserDto, RoleDto, CreateRoleDto, PermissionDto, CategoryDto } from '@/types/models'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -128,6 +148,25 @@ const showUser = ref(false)
 const showRole = ref(false)
 const userForm = reactive<CreateUserDto>({ username: '', name: '', dept: '', password: '', roleCode: 'USER' })
 const roleForm = reactive<CreateRoleDto>({ code: '', name: '' })
+
+// 改密码 / 启停
+const showPwd = ref(false)
+const pwdUser = ref<UserDto | null>(null)
+const newPwd = ref('')
+function openPwd(row: UserDto) { pwdUser.value = row; newPwd.value = ''; showPwd.value = true }
+async function onSubmitPwd() {
+  if (!pwdUser.value) return
+  if (newPwd.value.length < 6) { ElMessage.warning('密码至少 6 位'); return }
+  await api.put(`/users/${pwdUser.value.id}/password`, { newPassword: newPwd.value })
+  showPwd.value = false
+  ElMessage.success('密码已修改')
+}
+async function onToggleStatus(row: UserDto) {
+  const next = row.status === 1 ? 0 : 1
+  await api.put(`/users/${row.id}/status`, { status: next })
+  ElMessage.success(next === 1 ? '已启用' : '已禁用')
+  loadUsers()
+}
 
 // 五维权限
 const showPerm = ref(false)

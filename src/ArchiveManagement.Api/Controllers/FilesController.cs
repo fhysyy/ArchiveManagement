@@ -26,14 +26,14 @@ public class FilesController : ControllerBase
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateFileItemDto dto)
-        => Ok(new { code = 0, data = await _fileSvc.CreateAsync(dto) });
+        => Ok(new { code = 0, data = await _fileSvc.CreateAsync(dto, User.Identity?.Name) });
 
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] CreateFileItemDto dto)
-        => Ok(new { code = 0, data = await _fileSvc.UpdateAsync(id, dto) });
+        => Ok(new { code = 0, data = await _fileSvc.UpdateAsync(id, dto, User.Identity?.Name) });
 
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> Delete(long id) => Ok(new { code = 0, data = await _fileSvc.DeleteAsync(id) });
+    public async Task<IActionResult> Delete(long id) => Ok(new { code = 0, data = await _fileSvc.DeleteAsync(id, User.Identity?.Name) });
 
     // ===== 附件（电子文件级）：嵌套在文件下 =====
     // 列出某文件下的所有附件：GET /api/files/{fileId}/attachments

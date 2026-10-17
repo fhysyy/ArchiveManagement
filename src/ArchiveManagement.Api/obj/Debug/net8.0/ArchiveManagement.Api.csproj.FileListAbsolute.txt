@@ -83,4 +83,4 @@ D:\Projectcode\档案管理\src\ArchiveManagement.Api\obj\Debug\net8.0\refint\Ar
 D:\Projectcode\档案管理\src\ArchiveManagement.Api\obj\Debug\net8.0\ArchiveManagement.Api.pdb
 D:\Projectcode\档案管理\src\ArchiveManagement.Api\obj\Debug\net8.0\ArchiveManagement.Api.genruntimeconfig.cache
 D:\Projectcode\档案管理\src\ArchiveManagement.Api\obj\Debug\net8.0\ref\ArchiveManagement.Api.dll
-D:\Projectcode\档案管理\src\ArchiveManagement.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
+D:\Projectcode\档案管理\src\ArchiveManagement.Api\obj\Debug\net8.0\ArchiveManagement.Api.sourcelink.json

@@ -16,7 +16,7 @@ public class AttachmentsController : ControllerBase
     [HttpGet("{id:long}/download")]
     public async Task<IActionResult> Download(long id)
     {
-        var (stream, meta) = await _svc.DownloadAsync(id);
+        var (stream, meta) = await _svc.DownloadAsync(id, User.Identity?.Name);
         if (stream == null || meta == null) return NotFound(new { code = 404, msg = "附件不存在" });
         return File(stream, meta.MimeType ?? "application/octet-stream", meta.OriginalName ?? "download");
     }
@@ -25,7 +25,7 @@ public class AttachmentsController : ControllerBase
     [HttpGet("{id:long}/preview")]
     public async Task<IActionResult> Preview(long id)
     {
-        var (stream, meta) = await _svc.DownloadAsync(id);
+        var (stream, meta) = await _svc.DownloadAsync(id, User.Identity?.Name);
         if (stream == null || meta == null) return NotFound(new { code = 404, msg = "附件不存在" });
         var ct = meta.MimeType ?? "application/octet-stream";
         Response.Headers.Append("Content-Disposition", $"inline; filename=\"{meta.OriginalName ?? "preview"}\"");

@@ -15,7 +15,7 @@ public class SearchController : ControllerBase
 
     [HttpPost]
     public async Task<IActionResult> Search([FromBody] SearchArchiveDto dto)
-        => Ok(new { code = 0, data = await _svc.SearchAsync(dto) });
+        => Ok(new { code = 0, data = await _svc.SearchAsync(dto, User.Identity?.Name) });
 
     // 检索联想
     [HttpGet("suggest")]
