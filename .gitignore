@@ -1,0 +1,5 @@
+/.workbuddy
+obj/
+debug/
+*.dll
+.vs/
