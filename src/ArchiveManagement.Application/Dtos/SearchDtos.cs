@@ -15,6 +15,17 @@ public class SearchArchiveDto
     public int PageSize { get; set; } = 20;
     public string? SortBy { get; set; } = "Id";  // Id | Year | Title | CreatedAt
     public string? SortDir { get; set; } = "desc"; // asc | desc
+
+    /// <summary>门类自定义字段条件（按 template_json 里的 key 检索 dynamic_fields）</summary>
+    public List<MetaFilterDto>? Meta { get; set; }
+}
+
+/// <summary>自定义字段过滤条件</summary>
+public class MetaFilterDto
+{
+    public string Key { get; set; } = string.Empty;   // 字段 key（须属所选门类模板，且符合命名规范）
+    public string Op { get; set; } = "contains";      // contains | eq | gt | lt | between
+    public string? Value { get; set; }                 // between 时为 "起,止"
 }
 
 /// <summary>分页检索结果</summary>

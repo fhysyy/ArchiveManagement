@@ -7,6 +7,7 @@
 
     <div style="margin: 12px 0">
       <el-button type="primary" @click="openCreate">新增文件（件）</el-button>
+      <el-button @click="openCatalog">卷内目录（打印/导出）</el-button>
     </div>
 
     <el-table :data="rows" border>
@@ -44,12 +45,62 @@
         <el-button type="primary" @click="onSubmit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 卷内文件目录：可打印 / 导出 CSV -->
+    <el-dialog v-model="showCatalog" title="卷内文件目录" width="900px">
+      <div id="catalog-area">
+        <div class="cat-title">卷 内 文 件 目 录</div>
+        <div class="cat-meta">
+          <span>档号：{{ archiveNo || '-' }}</span>
+          <span>案卷题名：{{ archiveTitle || '-' }}</span>
+          <span>门类：{{ categoryName || '-' }}</span>
+        </div>
+        <table class="cat-table">
+          <thead>
+            <tr>
+              <th style="width: 56px">序号</th>
+              <th style="width: 130px">文号</th>
+              <th style="width: 110px">责任者</th>
+              <th>题名</th>
+              <th style="width: 100px">日期</th>
+              <th style="width: 60px">页号</th>
+              <th style="width: 90px">备注</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(f, i) in rows" :key="f.id">
+              <td class="c">{{ f.seqNo ?? i + 1 }}</td>
+              <td>{{ f.fileNo || '' }}</td>
+              <td>{{ f.author || '' }}</td>
+              <td>{{ f.title }}</td>
+              <td>{{ f.docDate || '' }}</td>
+              <td class="c">{{ f.pages ?? '' }}</td>
+              <td></td>
+            </tr>
+            <tr v-if="rows.length === 0"><td colspan="7" class="c">（暂无卷内文件）</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" class="c">合计</td>
+              <td class="c">{{ totalPages }}</td>
+              <td class="c">{{ rows.length }} 件</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <template #footer>
+        <el-button @click="showCatalog = false">关闭</el-button>
+        <el-button @click="onExportCsv">导出 CSV</el-button>
+        <el-button type="primary" @click="onPrint">打印</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import api from '@/api/request'
 import { listFiles, createFile, updateFile, deleteFile } from '@/api/file'
 import { getCategory } from '@/api/category'
 import DynamicForm from '@/components/DynamicForm.vue'
@@ -118,6 +169,64 @@ async function onDelete(row: FileItemDto) {
   ElMessage.success('已删除')
   load()
 }
+// ===== 卷内文件目录：打印 / 导出 =====
+const showCatalog = ref(false)
+const archiveNo = ref('')
+const totalPages = computed(() => rows.value.reduce((s, f) => s + (f.pages ?? 0), 0))
+
+async function openCatalog() {
+  await load() // 保证取到最新件
+  try {
+    const { data } = await api.get(`/archives/${archiveId}`)
+    archiveNo.value = data.data?.archiveNo ?? ''
+  } catch { archiveNo.value = '' }
+  showCatalog.value = true
+}
+
+function catalogRows(): string[][] {
+  return rows.value.map((f, i) => [
+    String(f.seqNo ?? i + 1), f.fileNo ?? '', f.author ?? '', f.title ?? '',
+    f.docDate ?? '', String(f.pages ?? ''), ''
+  ])
+}
+
+function onExportCsv() {
+  const head = ['序号', '文号', '责任者', '题名', '日期', '页号', '备注']
+  const esc = (s: string) => `"${String(s).replace(/"/g, '""')}"`
+  const lines = [head, ...catalogRows()].map(r => r.map(esc).join(','))
+  const csv = '﻿' + lines.join('\r\n') // BOM，避免 Excel 打开乱码
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `卷内目录_${archiveNo.value || archiveId}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出 CSV')
+}
+
+function onPrint() {
+  const el = document.getElementById('catalog-area')
+  if (!el) return
+  const w = window.open('', '_blank', 'width=900,height=700')
+  if (!w) { ElMessage.warning('浏览器阻止了弹出窗口，请允许后重试'); return }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>卷内文件目录 ${archiveNo.value}</title>
+<style>
+  body{font-family:"SimSun","宋体",serif;margin:24px;color:#000}
+  .cat-title{text-align:center;font-size:20px;font-weight:700;letter-spacing:4px;margin-bottom:10px}
+  .cat-meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid #000;padding:5px 6px;vertical-align:top}
+  th{background:#f2f2f2;font-weight:600;text-align:center}
+  td.c{text-align:center}
+  tfoot td{font-weight:600}
+  @page{size:A4 portrait;margin:16mm}
+</style></head><body>${el.innerHTML}</body></html>`)
+  w.document.close()
+  w.focus()
+  w.print()
+}
+
 function goAttachments(row: FileItemDto) {
   router.push({
     path: '/attachments',
@@ -134,4 +243,16 @@ onMounted(() => { loadTemplate(); load() })
 .crumb { margin-bottom: 4px; color: #475569; }
 .no-tpl { color: #94a3b8; font-size: 12px; }
 .divider-text { color: #475569; font-size: 12px; }
+</style>
+
+<style>
+/* 卷内目录（dialog 内容被 teleport 到 body，故用非 scoped 样式） */
+#catalog-area .cat-title { text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 4px; margin-bottom: 10px; }
+#catalog-area .cat-meta { display: flex; justify-content: space-between; font-size: 12px; color: #475569; margin-bottom: 8px; }
+#catalog-area .cat-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+#catalog-area .cat-table th,
+#catalog-area .cat-table td { border: 1px solid #d0d7de; padding: 5px 6px; vertical-align: top; }
+#catalog-area .cat-table th { background: #f5f7fa; font-weight: 600; text-align: center; }
+#catalog-area .cat-table td.c { text-align: center; }
+#catalog-area .cat-table tfoot td { font-weight: 600; background: #fafafa; text-align: center; }
 </style>

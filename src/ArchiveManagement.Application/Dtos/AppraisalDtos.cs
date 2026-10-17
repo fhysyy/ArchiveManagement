@@ -34,4 +34,27 @@ public class DueArchiveDto
 {
     public ArchiveDto Archive { get; set; } = new();
     public int ExpiryYear { get; set; }
+    /// <summary>已存在的鉴定任务 Id（Pending/Approved 视为在途），无则为 null</summary>
+    public long? AppraisalId { get; set; }
+    public string? AppraisalStatus { get; set; }
+}
+
+/// <summary>鉴定任务分页结果</summary>
+public class PagedAppraisalResult
+{
+    public int Total { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+    public List<AppraisalDto> Items { get; set; } = new();
+}
+
+/// <summary>到期清单分页结果</summary>
+public class PagedDueResult
+{
+    public int Total { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+    public List<DueArchiveDto> Items { get; set; } = new();
 }

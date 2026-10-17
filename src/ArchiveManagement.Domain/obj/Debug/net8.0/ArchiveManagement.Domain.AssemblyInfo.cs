@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArchiveManagement.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a0e4f81972b629f6b4b0affd09162322bc652b31")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+12e12e06324df4395656387bac8911dde4152437")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArchiveManagement.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArchiveManagement.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

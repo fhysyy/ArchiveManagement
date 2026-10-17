@@ -111,7 +111,14 @@ export interface AttachmentUploadResultDto {
 }
 
 // ===== 条件检索（T11）=====
+export interface MetaFilterDto {
+  key: string
+  op: string   // contains | eq | gt | lt | between
+  value?: string
+}
+
 export interface SearchArchiveDto {
+  meta?: MetaFilterDto[]
   categoryId?: number
   yearStart?: number
   yearEnd?: number
@@ -198,6 +205,61 @@ export interface AppraisalAuditDto {
 export interface DueArchiveDto {
   archive: ArchiveDto
   expiryYear: number
+  appraisalId?: number | null // 在途鉴定任务 Id（Pending/Approved）
+  appraisalStatus?: string | null
+}
+
+export interface PagedAuditResult {
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  items: AuditLogDto[]
+}
+
+// ===== 全宗管理 =====
+export interface FondsDto {
+  id: number
+  code: string
+  name: string
+  description?: string
+  status: number
+  createdAt: string
+  updatedAt: string
+  categoryCount: number
+  archiveCount: number
+}
+export interface SaveFondsDto {
+  id: number
+  code: string
+  name: string
+  description?: string
+  status?: number
+}
+
+export interface ProjectTreeNode {
+  id: number
+  label: string
+  type: string // project | archive | file
+  archiveNo?: string | null
+  status?: string | null
+  fileCount: number
+  children: ProjectTreeNode[]
+}
+
+export interface PagedAppraisalResult {
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  items: AppraisalDto[]
+}
+export interface PagedDueResult {
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  items: DueArchiveDto[]
 }
 
 // ===== 统计报表（T15）=====

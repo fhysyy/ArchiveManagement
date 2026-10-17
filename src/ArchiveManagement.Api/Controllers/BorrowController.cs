@@ -17,9 +17,15 @@ public class BorrowController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateBorrowDto dto)
         => Ok(new { code = 0, data = await _svc.CreateAsync(dto, User.Identity?.Name) });
 
+    /// <summary>列表：传 page/pageSize 走分页，否则返回全量（向后兼容）</summary>
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? role)
-        => Ok(new { code = 0, data = await _svc.ListAsync(role ?? "applicant", User.Identity?.Name) });
+    public async Task<IActionResult> List([FromQuery] string? role, [FromQuery] int? page, [FromQuery] int? pageSize)
+    {
+        var r = role ?? "applicant";
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(new { code = 0, data = await _svc.ListPagedAsync(r, User.Identity?.Name, page ?? 1, pageSize ?? 20) });
+        return Ok(new { code = 0, data = await _svc.ListAsync(r, User.Identity?.Name) });
+    }
 
     [HttpPut("{id:long}/approve")]
     public async Task<IActionResult> Approve(long id, [FromBody] BorrowAuditDto? dto)

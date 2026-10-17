@@ -7,9 +7,11 @@ namespace ArchiveManagement.Application.Services;
 
 public interface IAppraisalService
 {
-    Task<List<DueArchiveDto>> ListDueAsync();
+    Task<List<DueArchiveDto>> ListDueAsync(bool excludeProposed = false);
+    Task<PagedDueResult> ListDuePagedAsync(int page, int pageSize, bool excludeProposed = false);
     Task<AppraisalDto> CreateAsync(CreateAppraisalDto dto, string? operatorName);
     Task<List<AppraisalDto>> ListAsync();
+    Task<PagedAppraisalResult> ListPagedAsync(int page, int pageSize, string? status = null);
     Task<AppraisalDto?> ApproveAsync(long id, string action, string? operatorName);
     Task<AppraisalDto?> ExecuteAsync(long id, string? operatorName);
 }
@@ -19,11 +21,22 @@ public class AppraisalService : IAppraisalService
     private readonly IFreeSql _db;
     public AppraisalService(IFreeSql db) => _db = db;
 
-    /// <summary>到期保管期限清单：retention 为 N年 且 (年度+N) <= 当前年；"永久"不过期</summary>
-    public async Task<List<DueArchiveDto>> ListDueAsync()
+    /// <summary>到期保管期限清单：retention 为 N年 且 (年度+N) &lt;= 当前年；"永久"不过期</summary>
+    public Task<List<DueArchiveDto>> ListDueAsync(bool excludeProposed = false) => BuildDueListAsync(excludeProposed);
+
+    public async Task<PagedDueResult> ListDuePagedAsync(int page, int pageSize, bool excludeProposed = false)
+    {
+        var all = await BuildDueListAsync(excludeProposed);
+        return Paging(all, page, pageSize, items => new PagedDueResult { Items = items });
+    }
+
+    private async Task<List<DueArchiveDto>> BuildDueListAsync(bool excludeProposed)
     {
         var curYear = DateTime.UtcNow.Year;
-        var archives = await _db.Select<Archive>().ToListAsync();
+        // 已逻辑删除 / 已销毁的档案不再提示鉴定
+        var archives = await _db.Select<Archive>()
+            .Where(a => !a.IsDeleted && a.Status != ArchiveStatus.Destroyed)
+            .ToListAsync();
         var result = new List<DueArchiveDto>();
         foreach (var a in archives)
         {
@@ -31,10 +44,46 @@ public class AppraisalService : IAppraisalService
             if (years <= 0) continue; // 永久或无法解析
             var baseYear = a.Year ?? curYear;
             var expiry = baseYear + years;
-            if (expiry <= curYear)
-                result.Add(new DueArchiveDto { Archive = ToArchiveDto(a), ExpiryYear = expiry });
+            if (expiry > curYear) continue;
+            result.Add(new DueArchiveDto { Archive = ToArchiveDto(a), ExpiryYear = expiry });
         }
-        return result;
+
+        // 标注在途的鉴定任务，便于前端区分"已提议/未提议"
+        if (result.Count > 0)
+        {
+            var ids = result.Select(x => x.Archive.Id).Distinct().ToList();
+            var inFlight = await _db.Select<Appraisal>()
+                .Where(x => ids.Contains(x.TargetId) && x.TargetType == "archive"
+                            && (x.Status == AppraisalStatus.Pending || x.Status == AppraisalStatus.Approved))
+                .ToListAsync();
+            foreach (var d in result)
+            {
+                var hit = inFlight.FirstOrDefault(x => x.TargetId == d.Archive.Id);
+                if (hit != null)
+                {
+                    d.AppraisalId = hit.Id;
+                    d.AppraisalStatus = hit.Status.ToString();
+                }
+            }
+            if (excludeProposed)
+                result = result.Where(x => x.AppraisalId == null).ToList();
+        }
+
+        return result.OrderBy(x => x.ExpiryYear).ThenBy(x => x.Archive.ArchiveNo).ToList();
+    }
+
+    private static T Paging<T>(List<DueArchiveDto> all, int page, int pageSize, Func<List<DueArchiveDto>, T> build) where T : PagedDueResult
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 20 : (pageSize > 200 ? 200 : pageSize);
+        var total = all.Count;
+        var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        var r = build(items);
+        r.Total = total;
+        r.Page = page;
+        r.PageSize = pageSize;
+        r.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
+        return r;
     }
 
     public async Task<AppraisalDto> CreateAsync(CreateAppraisalDto dto, string? operatorName)
@@ -57,6 +106,33 @@ public class AppraisalService : IAppraisalService
         var dtos = new List<AppraisalDto>();
         foreach (var a in list) dtos.Add(await ToDto(a, null));
         return dtos;
+    }
+
+    public async Task<PagedAppraisalResult> ListPagedAsync(int page, int pageSize, string? status = null)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 20 : (pageSize > 200 ? 200 : pageSize);
+
+        var q = _db.Select<Appraisal>();
+        if (!string.IsNullOrWhiteSpace(status)
+            && Enum.TryParse<AppraisalStatus>(status, true, out var st))
+            q = q.Where(x => x.Status == st);
+
+        var total = (int)await q.CountAsync();
+        var list = await q.OrderByDescending(x => x.Id)
+            .Page(page, pageSize).ToListAsync();
+
+        var items = new List<AppraisalDto>();
+        foreach (var a in list) items.Add(await ToDto(a, null));
+
+        return new PagedAppraisalResult
+        {
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+            Items = items
+        };
     }
 
     public async Task<AppraisalDto?> ApproveAsync(long id, string action, string? operatorName)

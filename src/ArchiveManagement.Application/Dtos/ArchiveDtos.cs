@@ -49,6 +49,18 @@ public class ArchiveTreeDto
     public List<FileTreeDto> Files { get; set; } = new();
 }
 
+/// <summary>门类级结构树节点：项目 → 案卷 → 卷内文件</summary>
+public class ProjectTreeNode
+{
+    public long Id { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // project | archive | file
+    public string? ArchiveNo { get; set; }
+    public string? Status { get; set; }
+    public int FileCount { get; set; }
+    public List<ProjectTreeNode> Children { get; set; } = new();
+}
+
 /// <summary>批量导入（一行一条档案）</summary>
 public class BatchImportRequest
 {

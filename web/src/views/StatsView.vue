@@ -12,24 +12,24 @@
         <el-row :gutter="12">
           <el-col :span="12">
             <el-card shadow="never"><template #header>按门类</template>
-              <el-table :data="ov?.byCategory ?? []" size="small"><el-table-column prop="categoryName" label="门类" /><el-table-column prop="count" label="数量" width="90" /></el-table>
+              <BarChart :items="byCategory" color="#409eff" />
             </el-card>
           </el-col>
           <el-col :span="12">
             <el-card shadow="never"><template #header>按年度</template>
-              <el-table :data="ov?.byYear ?? []" size="small"><el-table-column prop="key" label="年度" /><el-table-column prop="count" label="数量" width="90" /></el-table>
+              <BarChart :items="byYear" color="#67c23a" />
             </el-card>
           </el-col>
         </el-row>
         <el-row :gutter="12" style="margin-top: 12px">
           <el-col :span="12">
             <el-card shadow="never"><template #header>按保管期限</template>
-              <el-table :data="ov?.byRetention ?? []" size="small"><el-table-column prop="key" label="期限" /><el-table-column prop="count" label="数量" width="90" /></el-table>
+              <BarChart :items="byRetention" color="#e6a23c" />
             </el-card>
           </el-col>
           <el-col :span="12">
             <el-card shadow="never"><template #header>按密级</template>
-              <el-table :data="ov?.bySecrecy ?? []" size="small"><el-table-column prop="key" label="密级" /><el-table-column prop="count" label="数量" width="90" /></el-table>
+              <BarChart :items="bySecrecy" color="#f56c6c" />
             </el-card>
           </el-col>
         </el-row>
@@ -43,12 +43,12 @@
         <el-row :gutter="12">
           <el-col :span="12">
             <el-card shadow="never"><template #header>高频档案 TOP10</template>
-              <el-table :data="bs?.byTarget ?? []" size="small"><el-table-column prop="targetTitle" label="档案/文件" /><el-table-column prop="count" label="次数" width="80" /></el-table>
+              <BarChart :items="byTarget" color="#409eff" />
             </el-card>
           </el-col>
           <el-col :span="12">
             <el-card shadow="never"><template #header>高频利用者 TOP10</template>
-              <el-table :data="bs?.byApplicant ?? []" size="small"><el-table-column prop="applicantName" label="利用者" /><el-table-column prop="count" label="次数" width="80" /></el-table>
+              <BarChart :items="byApplicant" color="#909399" />
             </el-card>
           </el-col>
         </el-row>
@@ -72,8 +72,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { statsOverview, statsBorrow, statsDueWarning } from '@/api/stats'
+import BarChart from '@/components/BarChart.vue'
 import type { StatsOverviewDto, BorrowStatsDto, DueWarningDto } from '@/types/models'
 
 const tab = ref('overview')
@@ -81,6 +82,14 @@ const ov = ref<StatsOverviewDto>()
 const bs = ref<BorrowStatsDto>()
 const dw = ref<DueWarningDto>()
 const loading = ref(false)
+
+// 统一成 { key, count } 供图表组件消费
+const byCategory = computed(() => (ov.value?.byCategory ?? []).map(c => ({ key: c.categoryName, count: c.count })))
+const byYear = computed(() => ov.value?.byYear ?? [])
+const byRetention = computed(() => ov.value?.byRetention ?? [])
+const bySecrecy = computed(() => ov.value?.bySecrecy ?? [])
+const byTarget = computed(() => (bs.value?.byTarget ?? []).map(t => ({ key: t.targetTitle, count: t.count })))
+const byApplicant = computed(() => (bs.value?.byApplicant ?? []).map(a => ({ key: a.applicantName, count: a.count })))
 
 async function loadOverview() { const { data } = await statsOverview(); ov.value = data.data }
 async function loadBorrow() { const { data } = await statsBorrow(); bs.value = data.data }

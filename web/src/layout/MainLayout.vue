@@ -3,6 +3,7 @@
     <el-aside width="200px" style="background: #1e293b">
       <div class="logo">📁 档案管理系统</div>
       <el-menu router :default-active="$route.path" background-color="#1e293b" text-color="#cbd5e1" active-text-color="#fff">
+        <el-menu-item index="/fonds">全宗管理</el-menu-item>
         <el-menu-item index="/categories">门类管理</el-menu-item>
         <el-menu-item index="/archives">档案管理</el-menu-item>
         <el-menu-item index="/search">条件检索</el-menu-item>

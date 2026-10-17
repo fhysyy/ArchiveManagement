@@ -1,7 +1,19 @@
 /.workbuddy
-obj/
-debug/
-*.dll
 .vs/
-obj
-Debug/  
+bin/
+obj/
+Debug/
+Release/
+*.user
+*.suo
+*.dll
+*.pdb
+
+# 前端
+web/node_modules/
+web/dist/
+web/.vite/
+
+# 本地运行产物
+*.log
+Logs/

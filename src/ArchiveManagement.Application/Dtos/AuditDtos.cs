@@ -12,3 +12,12 @@ public class AuditLogDto
     public string? Ip { get; set; }
     public DateTime Ts { get; set; }
 }
+
+public class PagedAuditResult
+{
+    public int Total { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+    public List<AuditLogDto> Items { get; set; } = new();
+}

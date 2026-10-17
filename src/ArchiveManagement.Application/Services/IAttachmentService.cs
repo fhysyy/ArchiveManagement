@@ -22,9 +22,11 @@ public class AttachmentService : IAttachmentService
     private readonly IObjectStorage _storage;
     private readonly IPermissionService _perm;
     private readonly IAuditLogger _audit;
+    private readonly IWatermarkService _watermark;
 
-    public AttachmentService(IFreeSql db, IObjectStorage storage, IPermissionService perm, IAuditLogger audit)
-        => (_db, _storage, _perm, _audit) = (db, storage, perm, audit);
+    public AttachmentService(IFreeSql db, IObjectStorage storage, IPermissionService perm,
+        IAuditLogger audit, IWatermarkService watermark)
+        => (_db, _storage, _perm, _audit, _watermark) = (db, storage, perm, audit, watermark);
 
     public async Task<List<AttachmentDto>> ListByFileAsync(long fileItemId)
     {
@@ -99,6 +101,19 @@ public class AttachmentService : IAttachmentService
         }
 
         var stream = await _storage.GetAsync(e.FileName);
+
+        // 服务端水印：图片类附件叠加「利用者 + 时间」平铺水印，防截屏外传
+        if (stream != null && _watermark.Supported(e.OriginalName))
+        {
+            var buf = await ReadAllAsync(stream);
+            var marked = _watermark.Apply(buf, e.OriginalName, new[]
+            {
+                username ?? "anonymous",
+                DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            });
+            if (!ReferenceEquals(marked, buf)) stream = new MemoryStream(marked);
+        }
+
         await _audit.LogAsync("attachment.download", "Attachment", id, $"下载/预览附件 {e.OriginalName}");
         return (stream, ToDto(e));
     }
@@ -111,6 +126,15 @@ public class AttachmentService : IAttachmentService
         var ok = await _db.Delete<Attachment>().Where(a => a.Id == id).ExecuteAffrowsAsync() > 0;
         if (ok) await _audit.LogAsync("attachment.delete", "Attachment", id, $"删除附件 {e.OriginalName}");
         return ok;
+    }
+
+    private static async Task<byte[]> ReadAllAsync(Stream s)
+    {
+        if (s is MemoryStream ms && ms.TryGetBuffer(out _)) return ms.ToArray();
+        using var copy = new MemoryStream();
+        await s.CopyToAsync(copy);
+        s.Dispose();
+        return copy.ToArray();
     }
 
     private static AttachmentDto ToDto(Attachment a) => new()

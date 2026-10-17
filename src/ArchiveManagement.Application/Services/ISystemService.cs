@@ -25,7 +25,9 @@ public interface ISystemService
 public class SystemService : ISystemService
 {
     private readonly IFreeSql _db;
-    public SystemService(IFreeSql db) => _db = db;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _cfg;
+    public SystemService(IFreeSql db, Microsoft.Extensions.Configuration.IConfiguration cfg)
+        => (_db, _cfg) = (db, cfg);
 
     public async Task<HealthDto> HealthAsync()
     {
@@ -45,14 +47,29 @@ public class SystemService : ISystemService
     }
 
     /// <summary>
-    /// 触发备份。演示实现：校验数据库连通、落一条审计记录，返回成功标记。
-    /// 生产环境应改由 SQL Server 作业执行 BACKUP DATABASE 到 NAS/备份目录。
+    /// 真实备份：对当前库执行 SQL Server 的 BACKUP DATABASE，落到 Backup:Path 目录。
+    /// 备份文件按「库名_yyyyMMdd_HHmmss.bak」命名；失败时返回原因并落审计。
     /// </summary>
     public async Task<BackupResultDto> BackupAsync(string? operatorName)
     {
+        string? file = null;
         try
         {
-            await _db.Select<SysUser>().CountAsync(); // 探活
+            var dbName = ResolveDatabaseName();
+            if (string.IsNullOrWhiteSpace(dbName))
+                return new BackupResultDto { Ok = false, Message = "无法从连接串解析数据库名", Ts = DateTime.UtcNow };
+
+            var dir = _cfg["Backup:Path"];
+            if (string.IsNullOrWhiteSpace(dir))
+                dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                                   "ArchiveManagement", "backups");
+            Directory.CreateDirectory(dir);
+
+            file = Path.Combine(dir, $"{dbName}_{DateTime.Now:yyyyMMdd_HHmmss}.bak");
+            // WITH INIT 覆盖同名文件；COMPRESSION 在 Express 版不支持，故不使用
+            var sql = $"BACKUP DATABASE [{dbName.Replace("]", "]]")}] TO DISK = N'{file.Replace("'", "''")}' WITH INIT, NAME = N'ArchiveManagement 全量备份', DESCRIPTION = N'{DateTime.Now:yyyy-MM-dd HH:mm:ss}'";
+            await _db.Ado.ExecuteNonQueryAsync(sql);
+
             long? uid = null;
             if (!string.IsNullOrWhiteSpace(operatorName))
             {
@@ -62,19 +79,50 @@ public class SystemService : ISystemService
             await _db.Insert(new AuditLog
             {
                 UserId = uid, Action = "system.backup", TargetType = "System",
-                TargetId = null, Detail = "触发备份（演示）", Ts = DateTime.UtcNow
+                TargetId = null, Detail = $"数据库备份成功：{file}", Ts = DateTime.UtcNow
             }).ExecuteAffrowsAsync();
+
+            var sizeMb = File.Exists(file) ? new FileInfo(file).Length / 1024.0 / 1024.0 : 0;
             return new BackupResultDto
             {
                 Ok = true,
-                Message = "备份任务已触发（演示模式，实际备份请配置 SQL Server 备份作业）",
+                Message = $"备份成功（{sizeMb:F1} MB）",
+                File = file,
                 Ts = DateTime.UtcNow
             };
         }
         catch (Exception ex)
         {
+            try
+            {
+                await _db.Insert(new AuditLog
+                {
+                    Action = "system.backup", TargetType = "System",
+                    Detail = "数据库备份失败：" + ex.Message, Ts = DateTime.UtcNow
+                }).ExecuteAffrowsAsync();
+            }
+            catch { /* 审计写不进也不能影响返回 */ }
+            // 失败时清理可能生成的空文件
+            if (file != null && File.Exists(file) && new FileInfo(file).Length == 0)
+                try { File.Delete(file); } catch { }
             return new BackupResultDto { Ok = false, Message = ex.Message, Ts = DateTime.UtcNow };
         }
+    }
+
+    /// <summary>从连接串解析数据库名（Database= / Initial Catalog=）</summary>
+    private string ResolveDatabaseName()
+    {
+        var cs = _cfg["ConnectionStrings:SqlServer"] ?? string.Empty;
+        foreach (var part in cs.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length != 2) continue;
+            var k = kv[0].Trim();
+            if (string.Equals(k, "Database", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(k, "Initial Catalog", StringComparison.OrdinalIgnoreCase))
+                return kv[1].Trim();
+        }
+        return string.Empty;
     }
 
     public async Task<List<UserDto>> ListUsersAsync()

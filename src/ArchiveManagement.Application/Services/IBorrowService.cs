@@ -8,6 +8,7 @@ public interface IBorrowService
 {
     Task<BorrowDto> CreateAsync(CreateBorrowDto dto, string? applicantName);
     Task<List<BorrowDto>> ListAsync(string role, string? viewerName);
+    Task<PagedBorrowResult> ListPagedAsync(string role, string? viewerName, int page, int pageSize);
     Task<BorrowDto?> ApproveAsync(long id, string? approverName, BorrowAuditDto? dto);
     Task<BorrowDto?> RejectAsync(long id, string? approverName, BorrowAuditDto? dto);
     Task<BorrowDto?> ReturnAsync(long id);
@@ -72,6 +73,34 @@ public class BorrowService : IBorrowService
         var dtos = new List<BorrowDto>();
         foreach (var b in list) dtos.Add(await ToDto(b));
         return dtos;
+    }
+
+    public async Task<PagedBorrowResult> ListPagedAsync(string role, string? viewerName, int page, int pageSize)
+    {
+        await SweepExpiredAsync();
+        var q = _db.Select<BorrowRequest>();
+        if (string.Equals(role, "applicant", StringComparison.OrdinalIgnoreCase))
+        {
+            var uid = await ResolveUserId(viewerName);
+            q = q.Where(b => b.ApplicantId == (uid ?? 0));
+        }
+        else if (string.Equals(role, "approver", StringComparison.OrdinalIgnoreCase))
+        {
+            q = q.Where(b => b.Status == BorrowStatus.Pending);
+        }
+
+        int p = page < 1 ? 1 : page;
+        int size = pageSize < 1 ? 20 : (pageSize > 200 ? 200 : pageSize);
+        var total = await q.CountAsync();
+        var items = await q.OrderByDescending(b => b.Id).Page(p, size).ToListAsync();
+
+        var dtos = new List<BorrowDto>();
+        foreach (var b in items) dtos.Add(await ToDto(b));
+        return new PagedBorrowResult
+        {
+            Total = (int)total, Page = p, PageSize = size,
+            TotalPages = (int)Math.Ceiling(total / (double)size), Items = dtos
+        };
     }
 
     public async Task<BorrowDto?> ApproveAsync(long id, string? approverName, BorrowAuditDto? dto)

@@ -45,6 +45,29 @@
           <el-button @click="onReset">重置</el-button>
         </el-form-item>
       </el-form>
+
+      <!-- 门类自定义字段条件：按所选门类模板动态生成 -->
+      <template v-if="metaFields.length">
+        <el-divider content-position="left">
+          <span class="divider-text">门类扩展字段条件（{{ currentCategoryName }}）</span>
+        </el-divider>
+        <el-form :inline="true">
+          <el-form-item v-for="f in metaFields" :key="f.key" :label="f.label">
+            <!-- 下拉：等于 -->
+            <el-select v-if="f.type === 'select'" v-model="metaValues[f.key]" clearable style="width: 160px">
+              <el-option v-for="o in (f.enum || [])" :key="o" :label="o" :value="o" />
+            </el-select>
+            <!-- 数字：区间 -->
+            <template v-else-if="f.type === 'number'">
+              <el-input v-model="metaValues[f.key]" placeholder="最小值" style="width: 90px" />
+              <span style="margin: 0 4px">~</span>
+              <el-input v-model="metaRange[f.key]" placeholder="最大值" style="width: 90px" />
+            </template>
+            <!-- 文本/日期：包含 -->
+            <el-input v-else v-model="metaValues[f.key]" :placeholder="f.type === 'date' ? '如 2026-01' : '关键词'" style="width: 160px" />
+          </el-form-item>
+        </el-form>
+      </template>
     </el-card>
 
     <el-table :data="rows" border v-loading="loading">
@@ -137,14 +160,43 @@ async function loadCategories() {
   categories.value = data.data
 }
 // 检索联想
-// 所选门类的自定义字段（用于结果表动态列）
+// 所选门类的自定义字段：既用于结果表动态列，也用于生成筛选条件
 const metaColumns = ref<{ key: string; label: string }[]>([])
+const metaFields = ref<any[]>([])
+const metaValues = ref<Record<string, string>>({})
+const metaRange = ref<Record<string, string>>({})
+const currentCategoryName = ref('')
+
 function refreshMetaColumns() {
   const c = categories.value.find(x => x.id === q.categoryId)
   const tpl = safeParse(c?.templateJson)
-  metaColumns.value = Array.isArray(tpl)
-    ? tpl.filter((f: any) => f?.key).map((f: any) => ({ key: f.key, label: f.label || f.key }))
-    : []
+  const arr = Array.isArray(tpl) ? tpl.filter((f: any) => f?.key) : []
+  metaFields.value = arr
+  metaColumns.value = arr.map((f: any) => ({ key: f.key, label: f.label || f.key }))
+  currentCategoryName.value = c?.name ?? ''
+  // 切换门类时清空已填的自定义条件
+  metaValues.value = {}
+  metaRange.value = {}
+}
+
+// 组装自定义字段条件：下拉=eq，数字=between(有区间)或 gt，其余=contains
+function buildMetaFilters() {
+  const list: { key: string; op: string; value: string }[] = []
+  for (const f of metaFields.value) {
+    const v = (metaValues.value[f.key] ?? '').trim()
+    const hi = (metaRange.value[f.key] ?? '').trim()
+    if (!v && !hi) continue
+    if (f.type === 'select') {
+      if (v) list.push({ key: f.key, op: 'eq', value: v })
+    } else if (f.type === 'number') {
+      if (v && hi) list.push({ key: f.key, op: 'between', value: `${v},${hi}` })
+      else if (v) list.push({ key: f.key, op: 'gt', value: v })
+      else if (hi) list.push({ key: f.key, op: 'lt', value: hi })
+    } else if (v) {
+      list.push({ key: f.key, op: 'contains', value: v })
+    }
+  }
+  return list
 }
 
 async function querySuggest(kw: string, cb: (arr: { value: string }[]) => void) {
@@ -172,7 +224,8 @@ async function doSearch() {
       title: q.title || undefined, author: q.author || undefined,
       retention: q.retention || undefined, secrecyLevel: q.secrecyLevel || undefined,
       status: q.status || undefined, page: q.page, pageSize: q.pageSize,
-      sortBy: q.sortBy, sortDir: q.sortDir
+      sortBy: q.sortBy, sortDir: q.sortDir,
+      meta: buildMetaFilters()
     }
     const { data } = await searchArchives(payload)
     // 把 dynamicFields 里的自定义字段摊平成 __meta_xxx，供动态列展示
@@ -215,4 +268,5 @@ onMounted(async () => {
 
 <style scoped>
 .page { padding: 16px; }
+.divider-text { color: #475569; font-size: 12px; }
 </style>

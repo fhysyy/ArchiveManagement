@@ -40,6 +40,25 @@ public class SearchService : ISearchService
         if (!string.IsNullOrWhiteSpace(dto.Status) && Enum.TryParse<ArchiveStatus>(dto.Status, out var st))
             q = q.Where(a => a.Status == st);
 
+        // 自定义字段条件（dynamic_fields 里的 JSON key）：合并成一条原生 WHERE，参数用字典
+        var parms = new Dictionary<string, object>();
+        var conds = new List<string>();
+        int seq = 0;
+        string P(object v)
+        {
+            var name = $"mp{seq++}";
+            parms[name] = v;
+            return "@" + name;
+        }
+        if (dto.Meta != null)
+            foreach (var f in dto.Meta)
+            {
+                var c = BuildMetaCondition(f, P);
+                if (c != null) conds.Add(c);
+            }
+        if (conds.Count > 0)
+            q = q.Where(string.Join(" AND ", conds), parms);
+
         // 权限：可见门类收窄下推到 DB，减少取回量
         if (!p.IsAdmin && p.AllowedCategoryIds != null)
             q = q.Where(a => p.AllowedCategoryIds.Contains(a.CategoryId));
@@ -73,6 +92,47 @@ public class SearchService : ISearchService
             Items = items.Select(ToDto).ToList()!
         };
     }
+
+    // ===== 自定义字段检索（SQL Server JSON_VALUE）=====
+    // key 只允许字母/数字/下划线且非数字开头，杜绝 JSON path 注入
+    private static readonly System.Text.RegularExpressions.Regex KeyRegex =
+        new("^[A-Za-z_][A-Za-z0-9_]{0,63}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// 拼自定义字段条件：ISJSON 守卫 + JSON_VALUE 取值，值全部参数化。
+    /// 说明：JSON_VALUE 返回 nvarchar(4000)，数字/日期比较用 TRY_CAST。
+    /// </summary>
+    private static string? BuildMetaCondition(MetaFilterDto f, Func<object, string> p)
+    {
+        if (string.IsNullOrWhiteSpace(f.Key) || !KeyRegex.IsMatch(f.Key)) return null;
+        var val = f.Value?.Trim();
+        if (string.IsNullOrWhiteSpace(val)) return null;
+
+        // key 已过正则白名单，可安全拼入 JSON path 常量；查询值一律走命名参数
+        string col = $"JSON_VALUE([DynamicFields], '$.{f.Key}')";
+        string guard = "ISJSON([DynamicFields]) = 1";
+        var op = (f.Op ?? "contains").Trim().ToLowerInvariant();
+
+        switch (op)
+        {
+            case "eq":
+                return $"{guard} AND {col} = {p(val)}";
+            case "gt":
+                return $"{guard} AND TRY_CAST({col} AS DECIMAL(18,4)) > {p(ToDecimal(val))}";
+            case "lt":
+                return $"{guard} AND TRY_CAST({col} AS DECIMAL(18,4)) < {p(ToDecimal(val))}";
+            case "between":
+                var parts = val.Split(',', StringSplitOptions.TrimEntries);
+                if (parts.Length != 2) return null;
+                return $"{guard} AND TRY_CAST({col} AS DECIMAL(18,4)) BETWEEN {p(ToDecimal(parts[0]))} AND {p(ToDecimal(parts[1]))}";
+            default: // contains
+                return $"{guard} AND {col} LIKE {p($"%{val}%")}";
+        }
+    }
+
+    private static decimal ToDecimal(string s)
+        => decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0m;
 
     /// <summary>检索联想：按题名/档号前缀匹配</summary>
     public async Task<List<string>> SuggestAsync(string q, int limit = 10)
