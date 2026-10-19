@@ -19,9 +19,9 @@ public class FondsController : ControllerBase
     [HttpGet("{id:long}")]
     public async Task<IActionResult> Get(long id) => Ok(new { code = 0, data = await _svc.GetAsync(id) });
 
-    /// <summary>新增或更新全宗（仅管理员）</summary>
+    /// <summary>新增或更新全宗（仅系统管理员；注意角色编码取自 sys_role.code = SYS_ADMIN）</summary>
     [HttpPut]
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "SYS_ADMIN")]
     public async Task<IActionResult> Save([FromBody] SaveFondsDto dto)
         => Ok(new { code = 0, data = await _svc.SaveAsync(dto, User.Identity?.Name) });
 }
