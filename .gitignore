@@ -1,9 +1,9 @@
 /.workbuddy
-.vs/
-bin/
-obj/
-Debug/
-Release/
+.vs/*
+bin/*
+obj/*
+Debug/*
+Release/*
 *.user
 *.suo
 *.dll
@@ -16,4 +16,13 @@ web/.vite/
 
 # 本地运行产物
 *.log
-Logs/
+Logs/*
+
+*.pdb
+*.dll
+/bin
+/obj
+/src/ArchiveManagement.Application/bin
+/src/ArchiveManagement.Application/obj
+/src/ArchiveManagement.Api/obj
+/src/ArchiveManagement.Api/bin

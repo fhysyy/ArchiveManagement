@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '@/views/LoginView.vue'
 import MainLayout from '@/layout/MainLayout.vue'
 import CategoryView from '@/views/CategoryView.vue'
-import FondsView from '@/views/FondsView.vue'
 import ArchiveView from '@/views/ArchiveView.vue'
 import FileView from '@/views/FileView.vue'
 import AttachmentView from '@/views/AttachmentView.vue'
@@ -23,7 +22,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
       children: [
         { path: '', redirect: '/categories' },
-        { path: 'fonds', name: 'fonds', component: FondsView },
         { path: 'categories', name: 'categories', component: CategoryView },
         { path: 'archives', name: 'archives', component: ArchiveView },
         { path: 'files', name: 'files', component: FileView },

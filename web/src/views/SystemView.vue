@@ -44,6 +44,25 @@
         </el-table>
       </el-tab-pane>
 
+      <el-tab-pane label="全宗" name="fonds">
+        <el-alert type="info" :closable="false" style="margin-bottom: 12px; max-width: 640px"
+          title="一期为单全宗模式。全宗号即档号规则中的 {fonds}，修改后新生成的档号将使用新全宗号，历史档号不受影响。" />
+        <el-form label-width="90px" style="max-width: 640px" v-loading="loadingFonds">
+          <el-form-item label="全宗号" required><el-input v-model="fondsForm.code" placeholder="如 F1" /></el-form-item>
+          <el-form-item label="全宗名称" required><el-input v-model="fondsForm.name" /></el-form-item>
+          <el-form-item label="说明"><el-input v-model="fondsForm.description" type="textarea" :rows="2" /></el-form-item>
+          <el-form-item label="状态">
+            <el-switch v-model="fondsForm.statusOn" active-text="启用" inactive-text="停用" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="onSubmitFonds">保存</el-button>
+            <span v-if="fondsStat" style="margin-left: 12px; color: #64748b; font-size: 12px">
+              当前门类 {{ fondsStat.categoryCount }} 个 · 档案 {{ fondsStat.archiveCount }} 卷
+            </span>
+          </el-form-item>
+        </el-form>
+      </el-tab-pane>
+
       <el-tab-pane label="角色" name="roles">
         <div style="margin-bottom: 12px"><el-button type="primary" @click="openRole">新增角色</el-button></div>
         <el-table :data="roles" border>
@@ -135,7 +154,8 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { getHealth, triggerBackup, listUsers, createUser, deleteUser, listRoles, createRole, deleteRole, getPermissions, setPermissions } from '@/api/system'
 import { listCategories } from '@/api/category'
 import api from '@/api/request'
-import type { HealthDto, BackupResultDto, UserDto, CreateUserDto, RoleDto, CreateRoleDto, PermissionDto, CategoryDto } from '@/types/models'
+import { listFonds, saveFonds } from '@/api/fonds'
+import type { HealthDto, BackupResultDto, UserDto, CreateUserDto, RoleDto, CreateRoleDto, PermissionDto, CategoryDto, FondsDto } from '@/types/models'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const tab = ref('health')
@@ -148,6 +168,39 @@ const showUser = ref(false)
 const showRole = ref(false)
 const userForm = reactive<CreateUserDto>({ username: '', name: '', dept: '', password: '', roleCode: 'USER' })
 const roleForm = reactive<CreateRoleDto>({ code: '', name: '' })
+
+// 全宗设置（一期单全宗：直接编辑第一条，不做列表/新增）
+const loadingFonds = ref(false)
+const fondsStat = ref<{ categoryCount: number; archiveCount: number } | null>(null)
+const fondsForm = reactive({ id: 0, code: '', name: '', description: '', statusOn: true })
+
+async function loadFonds() {
+  loadingFonds.value = true
+  try {
+    const { data } = await listFonds()
+    const f: FondsDto | undefined = (data.data ?? [])[0]
+    if (!f) return
+    fondsForm.id = f.id
+    fondsForm.code = f.code
+    fondsForm.name = f.name
+    fondsForm.description = f.description ?? ''
+    fondsForm.statusOn = f.status === 1
+    fondsStat.value = { categoryCount: f.categoryCount, archiveCount: f.archiveCount }
+  } finally { loadingFonds.value = false }
+}
+async function onSubmitFonds() {
+  if (!fondsForm.code.trim() || !fondsForm.name.trim()) { ElMessage.warning('全宗号与名称不能为空'); return }
+  try {
+    await saveFonds({
+      id: fondsForm.id, code: fondsForm.code.trim(), name: fondsForm.name.trim(),
+      description: fondsForm.description, status: fondsForm.statusOn ? 1 : 0
+    })
+    ElMessage.success('全宗已保存')
+    await loadFonds()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.msg ?? e?.message ?? '保存失败')
+  }
+}
 
 // 改密码 / 启停
 const showPwd = ref(false)
@@ -240,6 +293,7 @@ async function onDelRole(row: RoleDto) {
 
 function refresh() {
   if (tab.value === 'health') loadHealth()
+  else if (tab.value === 'fonds') loadFonds()
   else if (tab.value === 'users') { loadUsers(); loadRoles() }
   else loadRoles()
 }
